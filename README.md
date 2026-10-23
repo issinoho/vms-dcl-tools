@@ -15,6 +15,7 @@ single file with its settings at the top, so you can copy it to your system and 
 | [`toolchain.com`](toolchain.com) | Reports the system and the version of every compiler, language and tool it finds (C, C++, Fortran, Java, Python, Git, GNU tools and more), with colour on ANSI terminals. Plain DCL, no privileges or extra tools needed. | On demand |
 | [`sysinfo.com`](sysinfo.com) | A fastfetch-style system summary: OS, hardware, uptime, cluster and network identity, CPU, memory, page and swap files, users, every mounted disk and your session, beside a small VMS logo. Plain DCL, no privileges needed. | On demand |
 | [`report.com`](report.com) | A sectioned configuration report for system managers: identity and boot, processors, memory and paging, global pages and sections, key SYSGEN parameters, cluster membership and members, network identity and a disk table. Plain DCL, no privileges needed. | On demand |
+| [`dev.com`](dev.com) | Lists devices by class with status, errors and operation counts; disks show label, size and use, other devices their type and owner. Filter by class, device name or wildcard, or show only devices with errors. Plain DCL, no privileges needed. | On demand |
 
 Both were written for **VSI OpenSSH V9.9-2C** on OpenVMS x86-64, where internet SSH probes
 make these files grow quickly.
@@ -58,6 +59,18 @@ $ PIPE @REPORT > REPORT.TXT
 The SYSGEN parameters shown are a `NAME|description` table in the procedure;
 add or remove lines to suit. Values a system cannot report are left out.
 
+## dev.com
+
+```
+$ @DEV                  all classes, hiding mailboxes, idle terminals and sockets
+$ @DEV DISK TAPE        only these classes
+$ @DEV DKA*             devices matching a name or wildcard
+$ @DEV ERRORS           only devices with errors or offline
+$ @DEV ALL              everything, including mailboxes and idle terminals
+```
+
+Classes are a table at the top of the procedure; add a line to list another.
+
 ## How sshlogs.com and logrotate.com work
 
 Both procedures resubmit themselves to a batch queue and share the same conventions:
@@ -74,7 +87,7 @@ Both procedures resubmit themselves to a batch queue and share the same conventi
 
 ## Installing
 
-These steps are for `sshlogs.com` and `logrotate.com`; `toolchain.com`, `sysinfo.com` and `report.com` need no setup.
+These steps are for `sshlogs.com` and `logrotate.com`; `toolchain.com`, `sysinfo.com`, `report.com` and `dev.com` need no setup.
 
 1. Copy the file to a directory on your system, e.g. `SYS$COMMON:[SYSMGR]`.
 2. Check the settings at the top:
