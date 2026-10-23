@@ -166,6 +166,7 @@ $!---- Report each tool --------------------------------------------------------
 $ tc_n_ok   = 0
 $ tc_n_miss = 0
 $ tc_n_bad  = 0
+$ tc_wantmsg = 0
 $ tc_i = 0
 $next_tool:
 $ tc_i = tc_i + 1
@@ -201,59 +202,63 @@ $   gosub show_row
 $   goto next_tool
 $ endif
 $!
+$! A command symbol whose program or procedure is missing: report it
+$! without running it (running it would only print an error).
+$ if tc_missing .nes. ""
+$ then
+$   tc_n_bad = tc_n_bad + 1
+$   tc_mark  = "!"
+$   tc_style = tc_bad
+$   tc_value = "missing " + tc_missing
+$   gosub show_row
+$   goto next_tool
+$ endif
+$!
 $! Run the version command, capturing both output streams
 $ if f$search(tc_out) .nes. "" then delete/nolog 'tc_out';*
 $ if f$search(tc_err) .nes. "" then delete/nolog 'tc_err';*
 $ pipe 'tc_cmd' < NLA0: > 'tc_out' 2> 'tc_err'
 $ tc_status = $status
 $!
-$! Find the version line: output first, then error stream (Java uses it)
-$ tc_file = tc_out
-$ gosub find_line
+$! 1. The line containing the match text: output first, then the error
+$!    stream (Java writes its version there). VMS messages are skipped.
+$ tc_wantmsg = 0
+$ gosub find_both
+$! 2. Otherwise the first line of output at all.
 $ if tc_line .eqs. ""
 $ then
-$   tc_file = tc_err
-$   gosub find_line
-$ endif
-$!
-$ if .not. tc_status .and. tc_line .eqs. ""
-$ then
-$!   The command failed: show its first message instead of a version
 $   tc_match = ""
-$   tc_file  = tc_err
-$   gosub find_line
-$   if tc_line .eqs. ""
-$   then
-$     tc_file = tc_out
-$     gosub find_line
-$   endif
-$   if tc_line .eqs. "" then tc_line = f$message(tc_status)
-$   tc_n_bad = tc_n_bad + 1
-$   tc_mark  = "!"
-$   tc_style = tc_bad
+$   gosub find_both
+$ endif
+$ if tc_line .nes. ""
+$ then
+$   if tc_strip .nes. "" then tc_line = tc_line - tc_strip
+$   tc_n_ok  = tc_n_ok + 1
+$   tc_mark  = "+"
+$   tc_style = tc_ok
 $   tc_value = tc_line
 $   gosub show_row
 $   goto next_tool
 $ endif
-$!
-$! No line matched: fall back to the first line of output
-$ if tc_line .eqs. ""
+$! 3. No version: show the command's first VMS message, if it gave one.
+$ tc_wantmsg = 1
+$ tc_match   = ""
+$ gosub find_both
+$ tc_wantmsg = 0
+$ if tc_line .eqs. "" .and. .not. tc_status then -
+    tc_line = f$message(tc_status)
+$ if tc_line .nes. ""
 $ then
-$   tc_match = ""
-$   tc_file  = tc_out
-$   gosub find_line
-$   if tc_line .eqs. ""
-$   then
-$     tc_file = tc_err
-$     gosub find_line
-$   endif
+$   tc_n_bad = tc_n_bad + 1
+$   tc_mark  = "!"
+$   tc_style = tc_bad
+$ else
+$   tc_n_ok  = tc_n_ok + 1
+$   tc_mark  = "+"
+$   tc_style = tc_ok
+$   tc_line  = "installed (no version reported)"
 $ endif
-$ if tc_line .eqs. "" then tc_line = "installed (no version reported)"
-$ if tc_strip .nes. "" then tc_line = tc_line - tc_strip
-$ tc_n_ok    = tc_n_ok + 1
-$ tc_mark    = "+"
-$ tc_style   = tc_ok
-$ tc_value   = tc_line
+$ tc_value = tc_line
 $ gosub show_row
 $ goto next_tool
 $tools_done:
@@ -301,8 +306,11 @@ $!==============================================================================
 $!
 $! CHECK_INSTALLED: tc_found = 1 if any check in tc_check passes.
 $! Each check is a file spec, SYM:symbol or LNM:logical-name.
+$! For a symbol, tc_missing is set to the file it runs if that file is
+$! missing ($image, MCR image or @procedure), otherwise "".
 $check_installed:
-$ tc_found = 0
+$ tc_found   = 0
+$ tc_missing = ""
 $ tc_j = 0
 $ci_next:
 $ tc_alt = f$edit(f$element(tc_j, ",", tc_check), "TRIM")
@@ -312,7 +320,11 @@ $ tc_kind = f$extract(0, 4, f$edit(tc_alt, "UPCASE"))
 $ if tc_kind .eqs. "SYM:"
 $ then
 $   tc_name = f$extract(4, 999, tc_alt)
-$   if f$type('tc_name') .nes. "" then tc_found = 1
+$   if f$type('tc_name') .nes. ""
+$   then
+$     tc_found = 1
+$     gosub check_target
+$   endif
 $ else
 $   if tc_kind .eqs. "LNM:"
 $   then
@@ -323,8 +335,41 @@ $   endif
 $ endif
 $ goto ci_next
 $!
+$! CHECK_TARGET: tc_missing = the file symbol tc_name runs, if missing.
+$check_target:
+$ tc_sv  = f$edit('tc_name', "TRIM,COMPRESS,UPCASE")
+$ tc_tgt = ""
+$ tc_def = "SYS$SYSTEM:.EXE"
+$ if f$extract(0, 1, tc_sv) .eqs. "$" then tc_tgt = f$extract(1, 999, tc_sv)
+$ if f$extract(0, 4, tc_sv) .eqs. "MCR " then tc_tgt = f$extract(4, 999, tc_sv)
+$ if f$extract(0, 1, tc_sv) .eqs. "@"
+$ then
+$   tc_tgt = f$extract(1, 999, tc_sv)
+$   tc_def = ".COM"
+$ endif
+$ tc_tgt = f$element(0, " ", f$edit(tc_tgt, "TRIM"))
+$ if tc_tgt .eqs. "" then return
+$ tc_spec = f$parse(tc_tgt, tc_def)
+$ if tc_spec .nes. ""
+$ then
+$   if f$search(tc_spec) .nes. "" then return
+$ endif
+$ tc_missing = tc_tgt
+$ return
+$!
+$! FIND_BOTH: FIND_LINE on the captured output, then the error stream.
+$find_both:
+$ tc_file = tc_out
+$ gosub find_line
+$ if tc_line .nes. "" then return
+$ tc_file = tc_err
+$ gosub find_line
+$ return
+$!
 $! FIND_LINE: tc_line = first non-blank line of tc_file containing tc_match
 $! (any case); any line if tc_match is empty; "" if none or no file.
+$! VMS messages (%FAC-L-ID and -FAC-L-ID lines) are skipped, unless
+$! tc_wantmsg is 1, when only messages are considered.
 $! (OPEN reports a missing file; F$SEARCH is avoided here because it keeps
 $! its place between calls and would miss a file searched for twice.)
 $find_line:
@@ -334,6 +379,11 @@ $fl_next:
 $ read/end_of_file=fl_close/error=fl_close tc_in tc_rec
 $ tc_rec = f$edit(tc_rec, "TRIM,COMPRESS")
 $ if tc_rec .eqs. "" then goto fl_next
+$ tc_c1 = f$extract(0, 1, tc_rec)
+$ tc_c2 = f$extract(1, 1, tc_rec)
+$ tc_msg = tc_c1 .eqs. "%" .or. (tc_c1 .eqs. "-" .and. -
+           f$locate(tc_c2, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") .lt. 26)
+$ if tc_msg .ne. tc_wantmsg then goto fl_next
 $ if tc_match .nes. ""
 $ then
 $   if f$locate(f$edit(tc_match, "UPCASE"), f$edit(tc_rec, "UPCASE")) -
