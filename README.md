@@ -18,6 +18,8 @@ single file with its settings at the top, so you can copy it to your system and 
 | [`dev.com`](dev.com) | Lists devices by class in a box with status, errors and operation counts; disks show label, size and use, other devices their type and owner. Filter by class, device name or wildcard, or show only devices with errors. Plain DCL, no privileges needed. | On demand |
 | [`space.com`](space.com) | Disk space report in a box: every disk with label, size, used and free space, a coloured bar and totals; unmounted disks and device errors noted. Give a percentage to list only fuller disks and get a warning status for batch jobs. Plain DCL, no privileges needed. | On demand |
 | [`uptime.com`](uptime.com) | Uptime of every cluster member (or the standalone system) in a box: hardware, version, votes, boot time and uptime, plus when the cluster formed and its quorum. Recent reboots are highlighted. Plain DCL, no privileges needed. | On demand |
+| [`lpd_queue.com`](lpd_queue.com) | Creates or re-creates a print queue that prints through the TCP/IP Services LPD client to a CUPS printer, and writes its printcap entry. Safe to re-run; `DRYRUN` shows what it would do. Needs SYSPRV and OPER. | When setting up a printer |
+| [`lprint.com`](lprint.com) | Prints files on the printer attached to your terminal or emulator, using ANSI printer controller mode; restores the terminal even after Ctrl/Y. | On demand |
 
 Both were written for **VSI OpenSSH V9.9-2C** on OpenVMS x86-64, where internet SSH probes
 make these files grow quickly.
@@ -99,6 +101,25 @@ $ @UPTIME PLAIN         plain +-| box, no colour
 
 Nodes up for less than a day are highlighted. Output to a file or batch log
 uses the plain box.
+
+## lpd_queue.com
+
+```
+$ @LPD_QUEUE LPD_OFFICE printserver Office_Laser            create the queue
+$ @LPD_QUEUE LPD_OFFICE printserver Office_Laser DEFAULT    and make it SYS$PRINT
+$ @LPD_QUEUE LPD_OFFICE printserver Office_Laser DRYRUN     show, change nothing
+```
+
+Set your usual queue, host and CUPS queue at the top of the procedure to run it
+with no parameters. On the CUPS side, start `cups-lpd` with
+`-o job-sheets=none` so no banner page is printed.
+
+## lprint.com
+
+```
+$ @LPRINT LOGIN.COM             print one file on the terminal's printer
+$ @LPRINT *.COM FF              several files, form feed after each
+```
 
 ## How sshlogs.com and logrotate.com work
 
