@@ -27,7 +27,7 @@ $! https://github.com/issinoho/vms-dcl-tools/blob/main/LICENSE
 $!------------------------------------------------------------------------------
 $ rp_verify = f$verify(0)
 $ set noon
-$ on control_y then goto cleanup
+$ on control_y then goto interrupted
 $! Lexicals a system does not support fail quietly and are skipped.
 $ rp_msg = f$environment("MESSAGE")
 $ set message/nofacility/noseverity/noidentification/notext
@@ -84,9 +84,38 @@ $   rp_head = rp_esc + "[1;31m"             ! bold red section headings
 $   rp_key  = rp_esc + "[1;34m"             ! bold blue labels
 $   rp_off  = rp_esc + "[0m"
 $ endif
+$!
+$!---- Box ---------------------------------------------------------------------
+$! DEC Special Graphics line drawing on an ANSI terminal; plain +-| elsewhere,
+$! so files and batch logs stay readable.
+$ rp_gon  = ""
+$ rp_goff = ""
+$ rp_c_tl = "+"
+$ rp_c_tr = "+"
+$ rp_c_bl = "+"
+$ rp_c_br = "+"
+$ rp_c_ml = "+"
+$ rp_c_mr = "+"
+$ rp_c_h  = "-"
+$ rp_c_v  = "|"
+$ if rp_ansi
+$ then
+$   rp_gon  = rp_esc + "(0"
+$   rp_goff = rp_esc + "(B"
+$   rp_c_tl = "l"
+$   rp_c_tr = "k"
+$   rp_c_bl = "m"
+$   rp_c_br = "j"
+$   rp_c_ml = "t"
+$   rp_c_mr = "u"
+$   rp_c_h  = "q"
+$   rp_c_v  = "x"
+$ endif
+$ rp_cw = rp_width - 6                      ! room inside the box
+$ rp_hn = rp_cw + 2
+$ rp_hline = f$fao("!''rp_hn'*''rp_c_h'")
 $ rp_kw = 22                                ! label width
-$ rp_vw = rp_width - 3 - rp_kw              ! room for values
-$ rp_rw = rp_width - 2                      ! rule width
+$ rp_vw = rp_cw - 1 - rp_kw                 ! room for values
 $!
 $!==============================================================================
 $! Header
@@ -94,13 +123,15 @@ $!==============================================================================
 $ rp_node = f$edit(f$getsyi("NODENAME"), "TRIM")
 $ rp_title = "System configuration report for " + rp_node
 $ rp_now = f$extract(0, 17, f$time())
-$ rp_pad = rp_rw - 2 - f$length(rp_title) - f$length(rp_now)
+$ rp_pad = rp_cw - f$length(rp_title) - f$length(rp_now)
 $ if rp_pad .lt. 1 then rp_pad = 1
 $ write sys$output ""
-$ write sys$output " ", f$fao("!''rp_rw'*=")
-$ write sys$output "  ", rp_bold, rp_title, rp_off, -
-                   f$fao("!''rp_pad'* "), rp_now
-$ write sys$output " ", f$fao("!''rp_rw'*=")
+$ rp_l = rp_c_tl
+$ rp_r = rp_c_tr
+$ gosub box_rule
+$ rp_txt = rp_bold + rp_title + rp_off + f$fao("!''rp_pad'* ") + rp_now
+$ rp_vl  = f$length(rp_title) + rp_pad + f$length(rp_now)
+$ gosub box_line
 $!
 $!==============================================================================
 $! System
@@ -406,16 +437,22 @@ $ gosub kv
 $!
 $ if .not. rp_brief .and. rp_cn .gt. 0
 $ then
-$   write sys$output ""
-$   write sys$output "  ", rp_key, -
-      f$fao("!8AS  !10AS  !12AS  !5AS", "Node", "Type", "Version", "Votes"), -
-      rp_off
+$   rp_txt = ""
+$   rp_vl  = 0
+$   gosub box_line
+$   rp_txt = f$fao("!8AS  !10AS  !12AS  !5AS", "Node", "Type", "Version", -
+                   "Votes")
+$   rp_vl  = f$length(rp_txt)
+$   rp_txt = rp_key + rp_txt + rp_off
+$   gosub box_line
 $   rp_i = 0
 $cl_row:
 $   rp_i = rp_i + 1
 $   if rp_i .gt. rp_cn then goto cl_done
-$   write sys$output "  ", f$fao("!8AS  !10AS  !12AS  !5UL", -
-      rp_cl_name_'rp_i', rp_cl_hw_'rp_i', rp_cl_ver_'rp_i', rp_cl_vote_'rp_i')
+$   rp_txt = f$fao("!8AS  !10AS  !12AS  !5UL", rp_cl_name_'rp_i', -
+             rp_cl_hw_'rp_i', rp_cl_ver_'rp_i', rp_cl_vote_'rp_i')
+$   rp_vl  = f$length(rp_txt)
+$   gosub box_line
 $   goto cl_row
 $ endif
 $cl_done:
@@ -476,9 +513,11 @@ $! Every mounted disk, skipping foreign mounts and shadow set members.
 $ if rp_brief then goto disk_done
 $ rp_hd = "Disks"
 $ gosub heading
-$ write sys$output "  ", rp_key, -
-    f$fao("!20AS !12AS !9AS !9AS !5AS", -
-          "Device", "Label", "Size", "Free", "Used"), rp_off
+$ rp_txt = f$fao("!20AS !12AS !9AS !9AS !5AS", -
+                "Device", "Label", "Size", "Free", "Used")
+$ rp_vl  = f$length(rp_txt)
+$ rp_txt = rp_key + rp_txt + rp_off
+$ gosub box_line
 $ rp_sysdev = f$getdvi("SYS$SYSDEVICE", "FULLDEVNAM")
 $disk_next:
 $ rp_dev = f$device("*", "DISK")
@@ -498,14 +537,20 @@ $ rp_mb = rp_fb / 2048
 $ gosub fmt_mb
 $ rp_pc = 0
 $ if rp_max .gt. 0 then rp_pc = (rp_max - rp_fb) / (rp_max / 100 + 1)
-$ write sys$output "  ", f$fao("!20AS !12AS !9AS !9AS !3UL%", -
-    rp_dn, rp_lab, rp_sz, rp_size, rp_pc)
+$ rp_txt = f$fao("!20AS !12AS !9AS !9AS !3UL%", -
+                rp_dn, rp_lab, rp_sz, rp_size, rp_pc)
+$ rp_vl  = f$length(rp_txt)
+$ gosub box_line
 $ goto disk_next
 $disk_end:
-$ write sys$output "  (* = system disk)"
+$ rp_txt = "(* = system disk)"
+$ rp_vl  = f$length(rp_txt)
+$ gosub box_line
 $disk_done:
 $!
-$ write sys$output " ", f$fao("!''rp_rw'*=")
+$ rp_l = rp_c_bl
+$ rp_r = rp_c_br
+$ gosub box_rule
 $ write sys$output ""
 $ goto cleanup
 $!
@@ -527,6 +572,12 @@ Output to a file or batch log is always plain text, for example:
 $ goto cleanup
 $!
 $!---- Clean up and exit -------------------------------------------------------
+$! Ctrl/Y: put the terminal back in its normal character set first.
+$interrupted:
+$ if f$type(rp_goff) .nes. ""
+$ then
+$   if rp_goff .nes. "" then write sys$output rp_goff, rp_off
+$ endif
 $cleanup:
 $ if f$type(rp_msg) .nes. "" then set message 'rp_msg'
 $ exit 1 + 0 * f$verify(rp_verify)
@@ -535,20 +586,37 @@ $!==============================================================================
 $! Subroutines
 $!==============================================================================
 $!
-$! HEADING: print a section heading for rp_hd.
+$! HEADING: start a new section of the box titled rp_hd.
 $heading:
-$ rp_hl = rp_rw - 6 - f$length(rp_hd)
-$ if rp_hl .lt. 1 then rp_hl = 1
-$ write sys$output ""
-$ write sys$output "  ", rp_head, "-- ", rp_hd, " ", -
-                   f$fao("!''rp_hl'*-"), rp_off
+$ rp_l = rp_c_ml
+$ rp_r = rp_c_mr
+$ gosub box_rule
+$ rp_txt = rp_head + rp_hd + rp_off
+$ rp_vl  = f$length(rp_hd)
+$ gosub box_line
 $ return
 $!
-$! KV: print "label  value" (rp_k, rp_v), fitting value to the width.
+$! KV: "label  value" (rp_k, rp_v) inside the box, fitting value to the width.
 $kv:
 $ if f$length(rp_v) .gt. rp_vw then -
     rp_v = f$extract(0, rp_vw - 3, rp_v) + "..."
-$ write sys$output "  ", rp_key, f$fao("!''rp_kw'AS", rp_k), rp_off, " ", rp_v
+$ rp_txt = rp_key + f$fao("!''rp_kw'AS", rp_k) + rp_off + " " + rp_v
+$ rp_vl  = rp_kw + 1 + f$length(rp_v)
+$ gosub box_line
+$ return
+$!
+$! BOX_RULE: a line across the box, ending in rp_l and rp_r.
+$box_rule:
+$ write sys$output " ", rp_gon, rp_l, rp_hline, rp_r, rp_goff
+$ return
+$!
+$! BOX_LINE: rp_txt inside the box, padded by its visible length rp_vl.
+$box_line:
+$ rp_fill = rp_cw - rp_vl
+$ rp_sp = ""
+$ if rp_fill .gt. 0 then rp_sp = f$fao("!''rp_fill'* ")
+$ write sys$output " ", rp_gon, rp_c_v, rp_goff, " ", rp_txt, rp_sp, " ", -
+                   rp_gon, rp_c_v, rp_goff
 $ return
 $!
 $! GET_SYI: rp_val = F$GETSYI(rp_item), or "" if this system lacks it.
