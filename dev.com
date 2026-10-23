@@ -30,7 +30,7 @@ $! https://github.com/issinoho/vms-dcl-tools/blob/main/LICENSE
 $!------------------------------------------------------------------------------
 $ dv_verify = f$verify(0)
 $ set noon
-$ on control_y then goto cleanup
+$ on control_y then goto interrupted
 $! Lexicals a system does not support fail quietly and are skipped.
 $ dv_msg = f$environment("MESSAGE")
 $ set message/nofacility/noseverity/noidentification/notext
@@ -134,9 +134,39 @@ $   dv_red  = dv_esc + "[31m"               ! offline
 $   dv_yel  = dv_esc + "[33m"               ! errors
 $   dv_off  = dv_esc + "[0m"
 $ endif
-$ dv_rw = dv_width - 2                      ! rule width
-$! Owner column gets whatever is left of the line.
-$ dv_ow = dv_width - 2 - 18 - 9 - 20 - 5 - 8 - 6
+$!
+$!---- Box ---------------------------------------------------------------------
+$! DEC Special Graphics line drawing on an ANSI terminal; plain +-| elsewhere,
+$! so files and batch logs stay readable.
+$ dv_gon  = ""
+$ dv_goff = ""
+$ dv_c_tl = "+"
+$ dv_c_tr = "+"
+$ dv_c_bl = "+"
+$ dv_c_br = "+"
+$ dv_c_ml = "+"
+$ dv_c_mr = "+"
+$ dv_c_h  = "-"
+$ dv_c_v  = "|"
+$ if dv_ansi
+$ then
+$   dv_gon  = dv_esc + "(0"
+$   dv_goff = dv_esc + "(B"
+$   dv_c_tl = "l"
+$   dv_c_tr = "k"
+$   dv_c_bl = "m"
+$   dv_c_br = "j"
+$   dv_c_ml = "t"
+$   dv_c_mr = "u"
+$   dv_c_h  = "q"
+$   dv_c_v  = "x"
+$ endif
+$ dv_cw = dv_width - 6                      ! room inside the box
+$ dv_hn = dv_cw + 2
+$ dv_hline = f$fao("!''dv_hn'*''dv_c_h'")
+$! Columns for other devices: device 18, status 9, type 18, errors 5,
+$! ops 8, then the owner in whatever is left.
+$ dv_ow = dv_cw - 18 - 9 - 18 - 5 - 8 - 5
 $!
 $ dv_shown  = 0
 $ dv_hidden = 0
@@ -148,13 +178,15 @@ $ dv_title = "Devices on " + dv_node
 $ if dv_spec .nes. "*" then dv_title = dv_title + " matching " + dv_spec
 $ if dv_errors then dv_title = dv_title + " with errors"
 $ dv_now = f$extract(0, 17, f$time())
-$ dv_pad = dv_rw - 2 - f$length(dv_title) - f$length(dv_now)
+$ dv_pad = dv_cw - f$length(dv_title) - f$length(dv_now)
 $ if dv_pad .lt. 1 then dv_pad = 1
 $ write sys$output ""
-$ write sys$output " ", f$fao("!''dv_rw'*=")
-$ write sys$output "  ", dv_bold, dv_title, dv_off, -
-                   f$fao("!''dv_pad'* "), dv_now
-$ write sys$output " ", f$fao("!''dv_rw'*=")
+$ dv_l = dv_c_tl
+$ dv_r = dv_c_tr
+$ gosub box_rule
+$ dv_txt = dv_bold + dv_title + dv_off + f$fao("!''dv_pad'* ") + dv_now
+$ dv_vl  = f$length(dv_title) + dv_pad + f$length(dv_now)
+$ gosub box_line
 $!
 $!==============================================================================
 $! One section per class
@@ -210,13 +242,15 @@ $ dv_st = f$fao("!9AS", dv_status)
 $ if dv_offline then dv_st = dv_red + dv_st + dv_off
 $ dv_er = f$fao("!5UL", dv_errs)
 $ if dv_errs .gt. 0 then dv_er = dv_yel + dv_er + dv_off
-$!
+$! Every column is fixed width, so a row's visible length is known.
+$ dv_rvl = dv_cw
 $ if dv_cls .eqs. "DISK"
 $ then
 $   gosub disk_cols
 $   dv_row = f$fao("!18AS ", dv_name) + dv_st + " " + -
              f$fao("!12AS !9AS !5AS ", dv_lab, dv_sz, dv_used) + -
              dv_er + f$fao(" !10UL", dv_ops)
+$   dv_rvl = 18 + 1 + 9 + 1 + 12 + 1 + 9 + 1 + 5 + 1 + 5 + 1 + 10
 $ else
 $   dv_type = ""
 $   dv_item = "DEVICE_TYPE_NAME"
@@ -230,40 +264,50 @@ $     dv_type = f$edit(dv_val, "TRIM")
 $   endif
 $   gosub owner
 $   dv_row = f$fao("!18AS ", dv_name) + dv_st + " " + -
-             f$fao("!20AS ", dv_type) + dv_er + f$fao(" !8UL ", dv_ops) + -
+             f$fao("!18AS ", dv_type) + dv_er + f$fao(" !8UL ", dv_ops) + -
              f$fao("!''dv_ow'AS", dv_own)
 $ endif
 $ dv_n = dv_n + 1
 $ dv_row_'dv_n' = dv_row
+$ dv_rvl_'dv_n' = dv_rvl
 $ goto dev_next
 $!
 $dev_done:
 $ if dv_n .eq. 0 then goto class_next
 $ dv_shown = dv_shown + dv_n
 $ dv_hd = f$element(1, "|", dv_e) + f$fao(" (!UL)", dv_n)
-$ gosub heading
+$ dv_l = dv_c_ml
+$ dv_r = dv_c_mr
+$ gosub box_rule
+$ dv_txt = dv_head + dv_hd + dv_off
+$ dv_vl  = f$length(dv_hd)
+$ gosub box_line
 $ if dv_cls .eqs. "DISK"
 $ then
-$   write sys$output "  ", dv_key, -
-      f$fao("!18AS !9AS !12AS !9AS !5AS !5AS !10AS", "Device", "Status", -
-            "Label", "Size", "Used", " Errs", "       Ops"), dv_off
+$   dv_txt = f$fao("!18AS !9AS !12AS !9AS !5AS !5AS !10AS", "Device", -
+             "Status", "Label", "Size", "Used", " Errs", "       Ops")
 $ else
-$   write sys$output "  ", dv_key, -
-      f$fao("!18AS !9AS !20AS !5AS !8AS !AS", "Device", "Status", -
-            "Type", " Errs", "     Ops", "Owner"), dv_off
+$   dv_txt = f$fao("!18AS !9AS !18AS !5AS !8AS !AS", "Device", "Status", -
+             "Type", " Errs", "     Ops", "Owner")
 $ endif
+$ dv_vl  = f$length(dv_txt)
+$ dv_txt = dv_key + dv_txt + dv_off
+$ gosub box_line
 $ dv_i = 0
 $row_next:
 $ dv_i = dv_i + 1
 $ if dv_i .gt. dv_n then goto class_next
-$ write sys$output "  ", dv_row_'dv_i'
+$ dv_txt = dv_row_'dv_i'
+$ dv_vl  = dv_rvl_'dv_i'
+$ gosub box_line
 $ goto row_next
 $!
 $class_done:
 $!
 $!---- Summary -----------------------------------------------------------------
-$ write sys$output ""
-$ write sys$output " ", f$fao("!''dv_rw'*=")
+$ dv_l = dv_c_ml
+$ dv_r = dv_c_mr
+$ gosub box_rule
 $ if dv_shown .eq. 0
 $ then
 $   dv_v = "No devices found"
@@ -273,9 +317,20 @@ $   dv_v = f$fao("!UL device!%S listed", dv_shown)
 $   if dv_bad .gt. 0 then -
       dv_v = dv_v + f$fao(", !UL with errors or offline", dv_bad)
 $ endif
-$ if dv_hidden .gt. 0 then -
-    dv_v = dv_v + f$fao(", !UL hidden (use ALL to list them)", dv_hidden)
-$ write sys$output "  ", dv_v
+$ dv_txt = dv_v
+$ dv_vl  = f$length(dv_txt)
+$ gosub box_line
+$ if dv_hidden .gt. 0
+$ then
+$   dv_txt = f$fao("!UL hidden: mailboxes, idle terminals, sockets (use ALL)", -
+                   dv_hidden)
+$   dv_txt = f$extract(0, dv_cw, dv_txt)
+$   dv_vl  = f$length(dv_txt)
+$   gosub box_line
+$ endif
+$ dv_l = dv_c_bl
+$ dv_r = dv_c_br
+$ gosub box_rule
 $ write sys$output ""
 $ goto cleanup
 $!
@@ -306,6 +361,12 @@ Examples:
 $ goto cleanup
 $!
 $!---- Clean up and exit -------------------------------------------------------
+$! Ctrl/Y: put the terminal back in its normal character set first.
+$interrupted:
+$ if f$type(dv_goff) .nes. ""
+$ then
+$   if dv_goff .nes. "" then write sys$output dv_goff, dv_off
+$ endif
 $cleanup:
 $ if f$type(dv_msg) .nes. "" then set message 'dv_msg'
 $ exit 1 + 0 * f$verify(dv_verify)
@@ -314,13 +375,18 @@ $!==============================================================================
 $! Subroutines
 $!==============================================================================
 $!
-$! HEADING: print a section heading for dv_hd.
-$heading:
-$ dv_hl = dv_rw - 6 - f$length(dv_hd)
-$ if dv_hl .lt. 1 then dv_hl = 1
-$ write sys$output ""
-$ write sys$output "  ", dv_head, "-- ", dv_hd, " ", -
-                   f$fao("!''dv_hl'*-"), dv_off
+$! BOX_RULE: a line across the box, ending in dv_l and dv_r.
+$box_rule:
+$ write sys$output " ", dv_gon, dv_l, dv_hline, dv_r, dv_goff
+$ return
+$!
+$! BOX_LINE: dv_txt inside the box, padded by its visible length dv_vl.
+$box_line:
+$ dv_fill = dv_cw - dv_vl
+$ dv_sp = ""
+$ if dv_fill .gt. 0 then dv_sp = f$fao("!''dv_fill'* ")
+$ write sys$output " ", dv_gon, dv_c_v, dv_goff, " ", dv_txt, dv_sp, " ", -
+                   dv_gon, dv_c_v, dv_goff
 $ return
 $!
 $! STATUS: dv_status and dv_offline for dv_dev.
