@@ -33,7 +33,7 @@ $! https://github.com/issinoho/vms-dcl-tools/blob/main/LICENSE
 $!------------------------------------------------------------------------------
 $ tc_verify = f$verify(0)
 $ set noon
-$ on control_y then goto cleanup
+$ on control_y then goto interrupted
 $!
 $!---- Tools to report ---------------------------------------------------------
 $! Label | check | version command | text to look for | strip
@@ -114,11 +114,13 @@ $   if f$getdvi("SYS$OUTPUT", "TRM")
 $   then
 $     tc_ansi = f$getdvi("SYS$OUTPUT", "TT_ANSICRT")
 $     tc_w = f$getdvi("SYS$OUTPUT", "DEVBUFSIZ")
-$     if tc_w .ge. 60 .and. tc_w .le. 132 then tc_width = tc_w
+$     if tc_w .ge. 80 .and. tc_w .le. 132 then tc_width = tc_w
 $   endif
 $ endif
 $ if tc_plain then tc_ansi = 0
 $ tc_bold  = ""
+$ tc_head  = ""
+$ tc_key   = ""
 $ tc_ok    = ""
 $ tc_dim   = ""
 $ tc_bad   = ""
@@ -127,14 +129,44 @@ $ if tc_ansi
 $ then
 $   tc_esc[0,8] = 27
 $   tc_bold = tc_esc + "[1m"
+$   tc_head = tc_esc + "[1;31m"              ! bold red section headings
+$   tc_key  = tc_esc + "[1;34m"              ! bold blue labels
 $   tc_ok   = tc_esc + "[32m"                ! green
 $   tc_dim  = tc_esc + "[2m"                 ! faint
 $   tc_bad  = tc_esc + "[31m"                ! red
 $   tc_off  = tc_esc + "[0m"
 $ endif
-$ tc_rule1 = f$fao("!''tc_width'*=")
-$ tc_rule2 = f$fao("!''tc_width'*-")
-$ tc_valw  = tc_width - 22                  ! room for the version text
+$!
+$!---- Box ---------------------------------------------------------------------
+$! DEC Special Graphics line drawing on an ANSI terminal; plain +-| elsewhere,
+$! so files and batch logs stay readable.
+$ tc_gon  = ""
+$ tc_goff = ""
+$ tc_c_tl = "+"
+$ tc_c_tr = "+"
+$ tc_c_bl = "+"
+$ tc_c_br = "+"
+$ tc_c_ml = "+"
+$ tc_c_mr = "+"
+$ tc_c_h  = "-"
+$ tc_c_v  = "|"
+$ if tc_ansi
+$ then
+$   tc_gon  = tc_esc + "(0"
+$   tc_goff = tc_esc + "(B"
+$   tc_c_tl = "l"
+$   tc_c_tr = "k"
+$   tc_c_bl = "m"
+$   tc_c_br = "j"
+$   tc_c_ml = "t"
+$   tc_c_mr = "u"
+$   tc_c_h  = "q"
+$   tc_c_v  = "x"
+$ endif
+$ tc_cw = tc_width - 6                      ! room inside the box
+$ tc_hn = tc_cw + 2
+$ tc_hline = f$fao("!''tc_hn'*''tc_c_h'")
+$ tc_valw  = tc_cw - 20                     ! room for the version text
 $!
 $! Scratch files for captured output, unique to this process
 $ tc_pid = f$getjpi("", "PID")
@@ -152,15 +184,31 @@ $ tc_hw   = f$edit(f$getsyi("HW_NAME"), "TRIM,COMPRESS")
 $ tc_vms  = f$edit(f$getsyi("VERSION"), "TRIM")
 $ tc_cpus = f$getsyi("ACTIVECPU_CNT")
 $ tc_now  = f$extract(0, 17, f$time())
-$ write sys$output tc_rule1
-$ write sys$output tc_bold, " OpenVMS development toolchain", tc_off
-$ write sys$output tc_rule1
-$ write sys$output f$fao(" !12AS!AS (!AS)", "Node", tc_node, tc_arch)
-$ write sys$output f$fao(" !12AS!AS", "Hardware", tc_hw)
-$ write sys$output f$fao(" !12AS!AS", "OpenVMS", tc_vms)
-$ write sys$output f$fao(" !12AS!UL active, !UL.!UL GB memory", -
-                         "CPUs", tc_cpus, tc_gbw, tc_gbf)
-$ write sys$output f$fao(" !12AS!AS", "Report date", tc_now)
+$ tc_title = "OpenVMS development toolchain"
+$ tc_pad = tc_cw - f$length(tc_title) - f$length(tc_now)
+$ if tc_pad .lt. 1 then tc_pad = 1
+$ write sys$output ""
+$ tc_l = tc_c_tl
+$ tc_r = tc_c_tr
+$ gosub box_rule
+$ tc_txt = tc_bold + tc_title + tc_off + f$fao("!''tc_pad'* ") + tc_now
+$ tc_vl  = f$length(tc_title) + tc_pad + f$length(tc_now)
+$ gosub box_line
+$ tc_l = tc_c_ml
+$ tc_r = tc_c_mr
+$ gosub box_rule
+$ tc_k = "Node"
+$ tc_v = f$edit(tc_node, "TRIM") + " (" + tc_arch + ")"
+$ gosub box_kv
+$ tc_k = "Hardware"
+$ tc_v = tc_hw
+$ gosub box_kv
+$ tc_k = "OpenVMS"
+$ tc_v = tc_vms
+$ gosub box_kv
+$ tc_k = "CPUs"
+$ tc_v = f$fao("!UL active, !UL.!UL GB memory", tc_cpus, tc_gbw, tc_gbf)
+$ gosub box_kv
 $!
 $!---- Report each tool --------------------------------------------------------
 $ tc_n_ok   = 0
@@ -176,9 +224,13 @@ $!
 $! Section heading
 $ if f$extract(0, 1, tc_entry) .eqs. "="
 $ then
-$   write sys$output ""
-$   write sys$output tc_bold, " ", f$extract(1, 999, tc_entry), tc_off
-$   write sys$output tc_rule2
+$   tc_l = tc_c_ml
+$   tc_r = tc_c_mr
+$   gosub box_rule
+$   tc_hd  = f$extract(1, tc_cw, tc_entry)
+$   tc_txt = tc_head + tc_hd + tc_off
+$   tc_vl  = f$length(tc_hd)
+$   gosub box_line
 $   goto next_tool
 $ endif
 $!
@@ -264,14 +316,22 @@ $ goto next_tool
 $tools_done:
 $!
 $!---- Summary -----------------------------------------------------------------
+$ tc_l = tc_c_ml
+$ tc_r = tc_c_mr
+$ gosub box_rule
+$ tc_txt = f$fao("!UL installed, !UL not installed, !UL failed", -
+                 tc_n_ok, tc_n_miss, tc_n_bad)
+$ tc_vl  = f$length(tc_txt)
+$ gosub box_line
+$ tc_txt = tc_ok + "+" + tc_off + " installed   " + -
+           tc_dim + "-" + tc_off + " not installed   " + -
+           tc_bad + "!" + tc_off + " version command failed"
+$ tc_vl  = 56
+$ gosub box_line
+$ tc_l = tc_c_bl
+$ tc_r = tc_c_br
+$ gosub box_rule
 $ write sys$output ""
-$ write sys$output tc_rule1
-$ write sys$output f$fao(" !UL installed, !UL not installed, !UL failed", -
-                         tc_n_ok, tc_n_miss, tc_n_bad)
-$ write sys$output " ", tc_ok, "+", tc_off, " installed   ", -
-                        tc_dim, "-", tc_off, " not installed   ", -
-                        tc_bad, "!", tc_off, " version command failed"
-$ write sys$output tc_rule1
 $ goto cleanup
 $!
 $!---- Help --------------------------------------------------------------------
@@ -291,6 +351,12 @@ Output to a file or batch log is always plain text, for example:
 $ goto cleanup
 $!
 $!---- Clean up and exit -------------------------------------------------------
+$! Ctrl/Y: put the terminal back in its normal character set first.
+$interrupted:
+$ if f$type(tc_goff) .nes. ""
+$ then
+$   if tc_goff .nes. "" then write sys$output tc_goff, tc_off
+$ endif
 $cleanup:
 $ if f$trnlnm("TC_IN") .nes. "" then close tc_in
 $ if f$type(tc_out) .nes. ""
@@ -399,6 +465,30 @@ $! SHOW_ROW: print one tool line, fitting the version text to the width.
 $show_row:
 $ if f$length(tc_value) .gt. tc_valw then -
     tc_value = f$extract(0, tc_valw - 3, tc_value) + "..."
-$ write sys$output "  ", tc_style, tc_mark, tc_off, " ", -
-                   f$fao("!18AS", tc_label), tc_style, tc_value, tc_off
+$ tc_txt = tc_style + tc_mark + tc_off + " " + f$fao("!18AS", tc_label) + -
+         tc_style + tc_value + tc_off
+$ tc_vl  = 20 + f$length(tc_value)
+$ gosub box_line
+$ return
+$!
+$! BOX_RULE: a line across the box, ending in tc_l and tc_r.
+$box_rule:
+$ write sys$output " ", tc_gon, tc_l, tc_hline, tc_r, tc_goff
+$ return
+$!
+$! BOX_LINE: tc_txt inside the box, padded by its visible length tc_vl.
+$box_line:
+$ tc_fill = tc_cw - tc_vl
+$ tc_sp = ""
+$ if tc_fill .gt. 0 then tc_sp = f$fao("!''tc_fill'* ")
+$ write sys$output " ", tc_gon, tc_c_v, tc_goff, " ", tc_txt, tc_sp, " ", -
+                   tc_gon, tc_c_v, tc_goff
+$ return
+$!
+$! BOX_KV: "label  value" (tc_k, tc_v) inside the box.
+$box_kv:
+$ tc_v = f$extract(0, tc_cw - 12, tc_v)
+$ tc_txt = tc_key + f$fao("!12AS", tc_k) + tc_off + tc_v
+$ tc_vl  = 12 + f$length(tc_v)
+$ gosub box_line
 $ return
