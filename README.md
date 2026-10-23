@@ -14,6 +14,7 @@ single file with its settings at the top, so you can copy it to your system and 
 | [`logrotate.com`](logrotate.com) | Rotates the accounting file, security audit journal and operator log, keeping dated archives for 90 days. | 1st of each month |
 | [`toolchain.com`](toolchain.com) | Reports the system and the version of every compiler, language and tool it finds (C, C++, Fortran, Java, Python, Git, GNU tools and more), with colour on ANSI terminals. Plain DCL, no privileges or extra tools needed. | On demand |
 | [`sysinfo.com`](sysinfo.com) | A fastfetch-style system summary: OS, hardware, uptime, cluster and network identity, CPU, memory, page and swap files, users, every mounted disk and your session, beside a small VMS logo. Plain DCL, no privileges needed. | On demand |
+| [`report.com`](report.com) | A sectioned configuration report for system managers: identity and boot, processors, memory and paging, global pages and sections, key SYSGEN parameters, cluster membership and members, network identity and a disk table. Plain DCL, no privileges needed. | On demand |
 
 Both were written for **VSI OpenSSH V9.9-2C** on OpenVMS x86-64, where internet SSH probes
 make these files grow quickly.
@@ -45,6 +46,18 @@ Values a system cannot report are left out rather than failing. The logo
 needs a line at least 80 characters wide; output to a file or batch log is
 plain text.
 
+## report.com
+
+```
+$ @REPORT               full report
+$ @REPORT BRIEF         without SYSGEN parameters, cluster members and disks
+$ @REPORT PLAIN         no colour
+$ PIPE @REPORT > REPORT.TXT
+```
+
+The SYSGEN parameters shown are a `NAME|description` table in the procedure;
+add or remove lines to suit. Values a system cannot report are left out.
+
 ## How sshlogs.com and logrotate.com work
 
 Both procedures resubmit themselves to a batch queue and share the same conventions:
@@ -61,7 +74,7 @@ Both procedures resubmit themselves to a batch queue and share the same conventi
 
 ## Installing
 
-These steps are for `sshlogs.com` and `logrotate.com`; `toolchain.com` and `sysinfo.com` need no setup.
+These steps are for `sshlogs.com` and `logrotate.com`; `toolchain.com`, `sysinfo.com` and `report.com` need no setup.
 
 1. Copy the file to a directory on your system, e.g. `SYS$COMMON:[SYSMGR]`.
 2. Check the settings at the top:
