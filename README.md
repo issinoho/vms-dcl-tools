@@ -16,6 +16,7 @@ single file with its settings at the top, so you can copy it to your system and 
 | [`sysinfo.com`](sysinfo.com) | A fastfetch-style system summary: OS, hardware, uptime, cluster and network identity, CPU, memory, page and swap files, users, every mounted disk and your session, beside a small VMS logo. Plain DCL, no privileges needed. | On demand |
 | [`report.com`](report.com) | A sectioned configuration report for system managers: identity and boot, processors, memory and paging, global pages and sections, key SYSGEN parameters, cluster membership and members, network identity and a disk table. Plain DCL, no privileges needed. | On demand |
 | [`dev.com`](dev.com) | Lists devices by class with status, errors and operation counts; disks show label, size and use, other devices their type and owner. Filter by class, device name or wildcard, or show only devices with errors. Plain DCL, no privileges needed. | On demand |
+| [`space.com`](space.com) | Disk space report: every disk with label, size, used and free space, a coloured bar and totals; unmounted disks and device errors noted. Give a percentage to list only fuller disks and get a warning status for batch jobs. Plain DCL, no privileges needed. | On demand |
 
 Both were written for **VSI OpenSSH V9.9-2C** on OpenVMS x86-64, where internet SSH probes
 make these files grow quickly.
@@ -71,6 +72,23 @@ $ @DEV ALL              everything, including mailboxes and idle terminals
 
 Classes are a table at the top of the procedure; add a line to list another.
 
+## space.com
+
+```
+$ @SPACE                all disks
+$ @SPACE 85             only disks 85% full or more
+$ @SPACE DKA*           disks matching a name or wildcard
+$ @SPACE PAGE           pause after each screenful
+```
+
+With a percentage, `$SEVERITY` is 0 (warning) when any disk is at or above it,
+so a batch job can act on it:
+
+```
+$ @SPACE 90
+$ IF $SEVERITY .EQ. 0 THEN MAIL/SUBJECT="Disk space" ...
+```
+
 ## How sshlogs.com and logrotate.com work
 
 Both procedures resubmit themselves to a batch queue and share the same conventions:
@@ -87,7 +105,10 @@ Both procedures resubmit themselves to a batch queue and share the same conventi
 
 ## Installing
 
-These steps are for `sshlogs.com` and `logrotate.com`; `toolchain.com`, `sysinfo.com`, `report.com` and `dev.com` need no setup.
+These steps are for `sshlogs.com` and `logrotate.com`; the on-demand procedures need no setup.
+Put them in a directory on `DCL$PATH` to run them by name (e.g. `SPACE`), or define a
+symbol such as `SPACE :== @dev:[dir]SPACE`. DCL matches built-in commands on their first
+four letters before it searches `DCL$PATH`, so avoid names that start like an existing command.
 
 1. Copy the file to a directory on your system, e.g. `SYS$COMMON:[SYSMGR]`.
 2. Check the settings at the top:
