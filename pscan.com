@@ -37,6 +37,9 @@ $! PS_USER, PS_NODE, PS_MODE, PS_IMAGE ("IDLE" at DCL), PS_STATE, PS_PRI,
 $! PS_CPUTIM. NODE=* scans the whole cluster; the default is this node.
 $! Seeing other users' processes needs GROUP or WORLD privilege.
 $!
+$! Based on PROCESS_SCAN.COM by Keith Cayemberg, first written in
+$! the mid-1980s. Rewritten.
+$!
 $! Copyright (c) 2026 Iain Smith. MIT licence:
 $! https://github.com/issinoho/vms-dcl-tools/blob/main/LICENSE
 $!------------------------------------------------------------------------------
@@ -46,6 +49,8 @@ $ ps_ansi   = 0
 $ ps_ctx    = ""
 $ ps_status = 1
 $ on control_y then goto cleanup
+$ ps_ctl = f$environment("CONTROL")        ! Ctrl/Y may be off (SSH logins);
+$ set control=y                            ! turn it on so it can stop us
 $ ps_msg = f$environment("MESSAGE")
 $ set message/nofacility/noseverity/noidentification/notext
 $!
@@ -623,6 +628,8 @@ $ if f$type(ps_ctx) .eqs. "PROCESS_CONTEXT" then -
     ps_x = f$context("PROCESS", ps_ctx, "CANCEL")
 $ if ps_ansi then write sys$output ps_esc, "(B", ps_esc, "[0m", ps_esc, "[?25h"
 $ if f$type(ps_msg) .nes. "" then set message 'ps_msg'
+$ if f$type(ps_ctl) .nes. "" then -
+    if f$locate("Y", ps_ctl) .eq. f$length(ps_ctl) then set nocontrol=y
 $ exit ps_status + 0 * f$verify(ps_verify)
 $!
 $!==============================================================================

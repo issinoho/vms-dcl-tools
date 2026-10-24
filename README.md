@@ -77,6 +77,8 @@ $ @DEV ALL              everything, including mailboxes and idle terminals
 
 Classes are a table at the top of the procedure; add a line to list another.
 
+Based on DEV.COM by Steve Watts.
+
 ## space.com
 
 ```
@@ -103,6 +105,8 @@ $ @UPTIME PLAIN         plain +-| box, no colour
 
 Nodes up for less than a day are highlighted. Output to a file or batch log
 uses the plain box.
+
+Based on the UPTIME procedure by RDJ.
 
 ## bootmap.com
 
@@ -154,6 +158,8 @@ $ @LPRINT LOGIN.COM             print one file on the terminal's printer
 $ @LPRINT *.COM FF              several files, form feed after each
 ```
 
+Inspired by an old DECUS library procedure.
+
 ## devmon.com
 
 ```
@@ -174,6 +180,8 @@ $ @QUEMON ALL ONCE      every queue, drawn once
 
 While it runs, `Q` quits, `S` starts a stopped queue and Return refreshes.
 
+Based on MONITOR_QUE.COM by Neil Sakac.
+
 ## pscan.com
 
 ```
@@ -191,6 +199,8 @@ In a procedure:
 $ @PSCAN IMAGE=MYSQLD QUIET
 $ IF PS_COUNT .EQ. 0 THEN @SYS$STARTUP:MYSQL_STARTUP
 ```
+
+Based on PROCESS_SCAN.COM by Keith Cayemberg.
 
 ## deltree.com
 
@@ -243,9 +253,16 @@ Some of these tools build on DCL written by others, often decades ago. We apprec
 the effort and inspiration that went into that work, and are glad to carry it into a
 new era of OpenVMS:
 
+- **Keith Cayemberg**, whose `PROCESS_SCAN.COM`, first written in the mid-1980s,
+  is the basis of [`pscan.com`](pscan.com).
+- **Neil Sakac**, whose `MONITOR_QUE.COM` (1990–1992) is the basis of
+  [`quemon.com`](quemon.com).
+- **RDJ**, who wrote the `UPTIME` procedure (1994) that is the basis of
+  [`uptime.com`](uptime.com).
 - **A.G.M. van Ruitenbeek** and **J.P. van den Ende** (PinkRoccade Industry, the
   Netherlands, 2003–2004), whose `MONITOR_DEVICES.COM` is the basis of
   [`devmon.com`](devmon.com).
+- **Steve Watts**, whose `DEV.COM` (2005) is the basis of [`dev.com`](dev.com).
 - The author of the DECUS library procedure that inspired [`lprint.com`](lprint.com),
   and the DECUS community that shared so much DCL with every VMS site.
 

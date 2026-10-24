@@ -25,6 +25,8 @@ $! Without WORLD privilege, owners in other groups show as a PID only.
 $!
 $! To list another class, add a line to the class table below.
 $!
+$! Based on DEV.COM by Steve Watts (2005). Rewritten.
+$!
 $! Copyright (c) 2026 Iain Smith. MIT licence:
 $! https://github.com/issinoho/vms-dcl-tools/blob/main/LICENSE
 $!------------------------------------------------------------------------------

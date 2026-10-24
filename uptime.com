@@ -15,6 +15,8 @@ $! Colour is used only on an ANSI terminal; output to a file or batch log is
 $! plain text. Works on VAX, Alpha, IA64 and x86-64, needs no privileges,
 $! and uses plain DCL only.
 $!
+$! Based on the UPTIME procedure by RDJ (1994). Rewritten.
+$!
 $! Copyright (c) 2026 Iain Smith. MIT licence:
 $! https://github.com/issinoho/vms-dcl-tools/blob/main/LICENSE
 $!------------------------------------------------------------------------------

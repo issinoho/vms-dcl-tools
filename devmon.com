@@ -30,6 +30,8 @@ $ dm_verify = f$verify(0)
 $ set noon
 $ dm_ansi = 0
 $ on control_y then goto cleanup
+$ dm_ctl = f$environment("CONTROL")        ! Ctrl/Y may be off (SSH logins);
+$ set control=y                            ! turn it on so it can stop us
 $ dm_msg = f$environment("MESSAGE")
 $ set message/nofacility/noseverity/noidentification/notext
 $!
@@ -319,6 +321,8 @@ $cleanup:
 $ if dm_ansi then write sys$output dm_esc, "(B", dm_esc, "[0m", -
                                    dm_esc, "[?25h"
 $ if f$type(dm_msg) .nes. "" then set message 'dm_msg'
+$ if f$type(dm_ctl) .nes. "" then -
+    if f$locate("Y", dm_ctl) .eq. f$length(dm_ctl) then set nocontrol=y
 $ exit 1 + 0 * f$verify(dm_verify)
 $!
 $!==============================================================================

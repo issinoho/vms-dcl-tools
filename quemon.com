@@ -23,6 +23,8 @@ $! Output that is not an ANSI terminal (a file, a batch log) is drawn once,
 $! in plain text. Plain DCL; no privileges needed to watch, though jobs
 $! you have no access to show as "no access".
 $!
+$! Based on MONITOR_QUE.COM by Neil Sakac (1990-1992). Rewritten.
+$!
 $! Copyright (c) 2026 Iain Smith. MIT licence:
 $! https://github.com/issinoho/vms-dcl-tools/blob/main/LICENSE
 $!------------------------------------------------------------------------------
@@ -30,6 +32,8 @@ $ qm_verify = f$verify(0)
 $ set noon
 $ qm_ansi = 0
 $ on control_y then goto cleanup
+$ qm_ctl = f$environment("CONTROL")        ! Ctrl/Y may be off (SSH logins);
+$ set control=y                            ! turn it on so it can stop us
 $ qm_msg = f$environment("MESSAGE")
 $ set message/nofacility/noseverity/noidentification/notext
 $!
@@ -326,6 +330,8 @@ $cleanup:
 $ if qm_ansi then write sys$output qm_esc, "(B", qm_esc, "[0m", qm_esc, "[?25h"
 $ qm_junk = f$getqui("CANCEL_OPERATION")
 $ if f$type(qm_msg) .nes. "" then set message 'qm_msg'
+$ if f$type(qm_ctl) .nes. "" then -
+    if f$locate("Y", qm_ctl) .eq. f$length(qm_ctl) then set nocontrol=y
 $ exit 1 + 0 * f$verify(qm_verify)
 $!
 $!==============================================================================
