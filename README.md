@@ -21,6 +21,7 @@ single file with its settings at the top, so you can copy it to your system and 
 | [`devmon.com`](devmon.com) | Live disk monitor in a box, redrawn every minute: use bars, error counts, shadow set members with copy/merge progress, and cluster mount counts. | On demand |
 | [`quemon.com`](quemon.com) | Live queue monitor in a box: queue states in colour and each job's state (executing for how long, printing which block, pending and why, retained with which error). Start a stopped queue from the screen. | On demand |
 | [`pscan.com`](pscan.com) | Finds processes by name, user, state, image, age or nearly-exhausted quota, in a box. Sets `PS_COUNT`, `PS_PIDS` and other symbols and a success/warning status for scripts; can watch live or wait until processes have gone. | On demand or in scripts |
+| [`deltree.com`](deltree.com) | Deletes a directory tree safely: shows the real path, file count and size and asks for YES; refuses whole disks, the tree you are in, your login tree, system directories and trees with alias entries. `DRYRUN`, `KEEP`, `LOG`, `NOCONFIRM`. | On demand |
 | [`lpd_queue.com`](lpd_queue.com) | Creates or re-creates a print queue that prints through the TCP/IP Services LPD client to a CUPS printer, and writes its printcap entry. Safe to re-run; `DRYRUN` shows what it would do. Needs SYSPRV and OPER. | When setting up a printer |
 | [`lprint.com`](lprint.com) | Prints files on the printer attached to your terminal or emulator, using ANSI printer controller mode; restores the terminal even after Ctrl/Y. | On demand |
 
@@ -161,6 +162,18 @@ In a procedure:
 $ @PSCAN IMAGE=MYSQLD QUIET
 $ IF PS_COUNT .EQ. 0 THEN @SYS$STARTUP:MYSQL_STARTUP
 ```
+
+## deltree.com
+
+```
+$ @DELTREE OLD DRYRUN               what would go from [.OLD]; deletes nothing
+$ @DELTREE DKA200:[USERS.OLD]       shows path, count and size; type YES
+$ @DELTREE [.BUILD] KEEP            empty the tree, keep BUILD.DIR
+$ @DELTREE [.SCRATCH] NOCONFIRM     in a batch job
+```
+
+Anything that cannot be deleted (an open file, no privilege) is listed with
+the reason, and `$STATUS` is an error.
 
 ## How sshlogs.com and logrotate.com work
 
