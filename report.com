@@ -22,6 +22,8 @@ $!     $ rp_k = "Label"
 $!     $ rp_v = value
 $!     $ gosub kv
 $!
+$! Based on SYS_INFO.COM by Jeff Cameron (1994). Rewritten.
+$!
 $! Copyright (c) 2026 Iain Smith. MIT licence:
 $! https://github.com/issinoho/vms-dcl-tools/blob/main/LICENSE
 $!------------------------------------------------------------------------------

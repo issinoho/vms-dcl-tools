@@ -65,6 +65,8 @@ $ PIPE @REPORT > REPORT.TXT
 The SYSGEN parameters shown are a `NAME|description` table in the procedure;
 add or remove lines to suit. Values a system cannot report are left out.
 
+Based on SYS_INFO.COM by Jeff Cameron.
+
 ## dev.com
 
 ```
@@ -259,6 +261,8 @@ new era of OpenVMS:
   [`quemon.com`](quemon.com).
 - **RDJ**, who wrote the `UPTIME` procedure (1994) that is the basis of
   [`uptime.com`](uptime.com).
+- **Jeff Cameron**, whose `SYS_INFO.COM` (1994) is the basis of
+  [`report.com`](report.com).
 - **A.G.M. van Ruitenbeek** and **J.P. van den Ende** (PinkRoccade Industry, the
   Netherlands, 2003–2004), whose `MONITOR_DEVICES.COM` is the basis of
   [`devmon.com`](devmon.com).
