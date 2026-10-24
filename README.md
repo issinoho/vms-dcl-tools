@@ -12,6 +12,7 @@ single file with its settings at the top, so you can copy it to your system and 
 |---|---|---|
 | [`sshlogs.com`](sshlogs.com) | Cleans up VSI OpenSSH per-connection logs, temp files, process dumps and `SSH$CMDRUN.LOG` files. Counts SSH server processes so leftover ones get noticed. | Every 15 minutes |
 | [`logrotate.com`](logrotate.com) | Rotates the accounting file, security audit journal and operator log, keeping dated archives for 90 days. | 1st of each month |
+| [`tidyhome.com`](tidyhome.com) | Tidies your login directory: purges old versions, deletes old temp, session, journal, swap, log and listing files and empty leftovers, keeps `SSH$CMDRUN.LOG` from reaching version 32767, and lists big files to look at. Runs as you; no privileges needed. | Nightly |
 | [`toolchain.com`](toolchain.com) | In a box, reports the system and the version of every compiler, language and tool it finds (C, C++, Fortran, Java, Python, Git, GNU tools and more), with colour on ANSI terminals. Plain DCL, no privileges or extra tools needed. | On demand |
 | [`sysinfo.com`](sysinfo.com) | A fastfetch-style system summary: OS, hardware, uptime, cluster and network identity, CPU, memory, page and swap files, users, every mounted disk and your session, beside a small VMS logo. Plain DCL, no privileges needed. | On demand |
 | [`report.com`](report.com) | A boxed, sectioned configuration report for system managers: identity and boot, processors, memory and paging, global pages and sections, key SYSGEN parameters, cluster membership and members, network identity and a disk table. Plain DCL, no privileges needed. | On demand |
@@ -216,23 +217,38 @@ $ @DELTREE [.SCRATCH] NOCONFIRM     in a batch job
 Anything that cannot be deleted (an open file, no privilege) is listed with
 the reason, and `$STATUS` is an error.
 
-## How sshlogs.com and logrotate.com work
+## How sshlogs.com, logrotate.com and tidyhome.com work
 
-Both procedures resubmit themselves to a batch queue and share the same conventions:
+These procedures resubmit themselves to a batch queue and share the same conventions:
 
 - **Parameters:** none = do the work and schedule the next run, `SUBMIT` = schedule only
   (use this to start the cycle), `DRYRUN` = show what would happen and change nothing.
 - **Settings and rules at the top.** Add a cleanup with a new `rule_n` line in
-  `sshlogs.com`, or a log to rotate with a new `log_n` line in `logrotate.com`.
+  `sshlogs.com` or `tidyhome.com`, or a log to rotate with a new `log_n` line in `logrotate.com`.
 - **Safe rescheduling.** The next run is queued *before* the work starts, with
   `/RESTART`, so a failure or crash doesn't break the cycle. A check across all batch
   queues stops a second copy being queued.
 - **Edits take effect.** The procedure resubmits itself without a version number, so the
   next run picks up the latest version of the file.
 
+## tidyhome.com
+
+```
+$ @TIDYHOME DRYRUN      list what would go; change nothing
+$ @TIDYHOME SUBMIT      start the nightly cycle (03:30)
+$ @TIDYHOME ONCE        tidy now, don't schedule
+$ @TIDYHOME DRYRUN DKA0:[TEST]   work on another directory
+```
+
+Unlike the other two it runs as whoever submits it, so each user can run their own
+copy. Only the top level of the directory is touched, and files are removed only by
+age (7 to 30 days, by type), so anything recent stays. `REPORT` rules only list files.
+Its log is `SYS$LOGIN:TIDYHOME.LOG`, kept at `;1`.
+
 ## Installing
 
-These steps are for `sshlogs.com` and `logrotate.com`; the on-demand procedures need no setup.
+These steps are for `sshlogs.com` and `logrotate.com` (`tidyhome.com` needs only steps 3
+and 4, run as yourself); the on-demand procedures need no setup.
 Put them in a directory on `DCL$PATH` to run them by name (e.g. `SPACE`), or define a
 symbol such as `SPACE :== @dev:[dir]SPACE`. DCL matches built-in commands on their first
 four letters before it searches `DCL$PATH`, so avoid names that start like an existing command.
