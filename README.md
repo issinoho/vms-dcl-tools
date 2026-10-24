@@ -20,6 +20,7 @@ single file with its settings at the top, so you can copy it to your system and 
 | [`uptime.com`](uptime.com) | Uptime of every cluster member (or the standalone system) in a box: hardware, version, votes, boot time and uptime, plus when the cluster formed and its quorum. Recent reboots are highlighted. Plain DCL, no privileges needed. | On demand |
 | [`devmon.com`](devmon.com) | Live disk monitor in a box, redrawn every minute: use bars, error counts, shadow set members with copy/merge progress, and cluster mount counts. | On demand |
 | [`quemon.com`](quemon.com) | Live queue monitor in a box: queue states in colour and each job's state (executing for how long, printing which block, pending and why, retained with which error). Start a stopped queue from the screen. | On demand |
+| [`pscan.com`](pscan.com) | Finds processes by name, user, state, image, age or nearly-exhausted quota, in a box. Sets `PS_COUNT`, `PS_PIDS` and other symbols and a success/warning status for scripts; can watch live or wait until processes have gone. | On demand or in scripts |
 | [`lpd_queue.com`](lpd_queue.com) | Creates or re-creates a print queue that prints through the TCP/IP Services LPD client to a CUPS printer, and writes its printcap entry. Safe to re-run; `DRYRUN` shows what it would do. Needs SYSPRV and OPER. | When setting up a printer |
 | [`lprint.com`](lprint.com) | Prints files on the printer attached to your terminal or emulator, using ANSI printer controller mode; restores the terminal even after Ctrl/Y. | On demand |
 
@@ -142,6 +143,24 @@ $ @QUEMON ALL ONCE      every queue, drawn once
 ```
 
 While it runs, `Q` quits, `S` starts a stopped queue and Return refreshes.
+
+## pscan.com
+
+```
+$ @PSCAN USER=SYSTEM SORT=CPU          SYSTEM's processes, busiest first
+$ @PSCAN IMAGE=SSHD OLDER=12:00        SSH servers logged in over 12 hours
+$ @PSCAN STATE=RWAST,RWMBX,MUTEX       processes waiting for resources
+$ @PSCAN CHECK=BYTLM PERCENT=10        nearly out of buffered I/O bytes
+$ @PSCAN STATE<>HIB WATCH=3            live view until Ctrl/Y
+$ @PSCAN IMAGE=BACKUP UNTILGONE=60 QUIET   wait for a backup to finish
+```
+
+In a procedure:
+
+```
+$ @PSCAN IMAGE=MYSQLD QUIET
+$ IF PS_COUNT .EQ. 0 THEN @SYS$STARTUP:MYSQL_STARTUP
+```
 
 ## How sshlogs.com and logrotate.com work
 
