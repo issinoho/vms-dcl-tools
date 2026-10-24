@@ -17,6 +17,8 @@ $! paper, and your terminal settings are put back afterwards, even if you
 $! press Ctrl/Y. Needs an ANSI terminal (VT100 or later, or an emulator
 $! with printer support turned on).
 $!
+$! Inspired by an old DECUS library procedure. Rewritten.
+$!
 $! Copyright (c) 2026 Iain Smith. MIT licence:
 $! https://github.com/issinoho/vms-dcl-tools/blob/main/LICENSE
 $!------------------------------------------------------------------------------

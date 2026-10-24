@@ -246,6 +246,8 @@ new era of OpenVMS:
 - **A.G.M. van Ruitenbeek** and **J.P. van den Ende** (PinkRoccade Industry, the
   Netherlands, 2003–2004), whose `MONITOR_DEVICES.COM` is the basis of
   [`devmon.com`](devmon.com).
+- The author of the DECUS library procedure that inspired [`lprint.com`](lprint.com),
+  and the DECUS community that shared so much DCL with every VMS site.
 
 ## Licence
 
