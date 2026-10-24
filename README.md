@@ -18,6 +18,7 @@ single file with its settings at the top, so you can copy it to your system and 
 | [`dev.com`](dev.com) | Lists devices by class in a box with status, errors and operation counts; disks show label, size and use, other devices their type and owner. Filter by class, device name or wildcard, or show only devices with errors. Plain DCL, no privileges needed. | On demand |
 | [`space.com`](space.com) | Disk space report in a box: every disk with label, size, used and free space, a coloured bar and totals; unmounted disks and device errors noted. Give a percentage to list only fuller disks and get a warning status for batch jobs. Plain DCL, no privileges needed. | On demand |
 | [`uptime.com`](uptime.com) | Uptime of every cluster member (or the standalone system) in a box: hardware, version, votes, boot time and uptime, plus when the cluster formed and its quorum. Recent reboots are highlighted. Plain DCL, no privileges needed. | On demand |
+| [`bootmap.com`](bootmap.com) | Explains in plain language, in a box, how the system boots and starts up: the boot sequence and each startup phase, where SYLOGICALS.COM fits and the names it defines, which procedure mounts each disk, the networking components, base OS, layered products and site software, the queues and the jobs and processes started at boot, and how long the last boot took. Reads the startup procedures without running them. | On demand |
 | [`devmon.com`](devmon.com) | Live disk monitor in a box, redrawn every minute: use bars, error counts, shadow set members with copy/merge progress, and cluster mount counts. | On demand |
 | [`quemon.com`](quemon.com) | Live queue monitor in a box: queue states in colour and each job's state (executing for how long, printing which block, pending and why, retained with which error). Start a stopped queue from the screen. | On demand |
 | [`pscan.com`](pscan.com) | Finds processes by name, user, state, image, age or nearly-exhausted quota, in a box. Sets `PS_COUNT`, `PS_PIDS` and other symbols and a success/warning status for scripts; can watch live or wait until processes have gone. | On demand or in scripts |
@@ -102,6 +103,37 @@ $ @UPTIME PLAIN         plain +-| box, no colour
 
 Nodes up for less than a day are highlighted. Output to a file or batch log
 uses the plain box.
+
+## bootmap.com
+
+```
+$ @BOOTMAP              full report
+$ @BOOTMAP BRIEF        without the startup chain tree and the logical name list
+$ @BOOTMAP FULL         also follow the procedures that product startups call
+$ @BOOTMAP PAGE         pause after each screenful
+$ PIPE @BOOTMAP > BOOTMAP.TXT
+```
+
+It starts from the startup databases that `STARTUP.COM` reads (`VMS$PHASES.DAT`,
+`VMS$VMS.DAT`, `VMS$LAYERED.DAT`), finds the site procedures the OS calls
+(`SYCONFIG`, `SYLOGICALS`, `SYPAGSWPFILES`, `SYSECURITY`, `SYSTARTUP_VMS`) and follows
+every `@` call from them, including procedures named in symbol lists such as
+`st_n = "label|SYS$STARTUP:FOO$STARTUP.COM|OPTIONAL"`. Along the way it notes disk
+mounts, system logical names, queue commands, `SUBMIT`s, detached `RUN`s and page
+files, with the `IF` condition around each. Site procedures are followed all the way
+down; a product's startup is only summarised (`FULL` follows it too).
+
+The sections are: in brief, boot sequence, startup chain, SYLOGICALS.COM, disks,
+networking, layered products and site software, queues, batch jobs and processes,
+other settings, last boot, and after startup. The last-boot section needs
+`STARTUP_P2` to include `D`, so that each boot writes
+`SYS$SPECIFIC:[SYSEXE]STARTUP.LOG`; the report says how to turn this on if it is off.
+
+Nothing is run, so it is safe on a live system, but reading every startup
+procedure takes half a minute or so. It turns on READALL and WORLD if you hold
+them; without them some procedures may be listed as unreadable. Procedure
+descriptions and categories are `ds_n` and `ct_n` tables at the top: add a line to
+describe another product.
 
 ## lpd_queue.com
 
