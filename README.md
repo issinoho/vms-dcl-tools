@@ -25,9 +25,6 @@ single file with its settings at the top, so you can copy it to your system and 
 | [`lpd_queue.com`](lpd_queue.com) | Creates or re-creates a print queue that prints through the TCP/IP Services LPD client to a CUPS printer, and writes its printcap entry. Safe to re-run; `DRYRUN` shows what it would do. Needs SYSPRV and OPER. | When setting up a printer |
 | [`lprint.com`](lprint.com) | Prints files on the printer attached to your terminal or emulator, using ANSI printer controller mode; restores the terminal even after Ctrl/Y. | On demand |
 
-Both were written for **VSI OpenSSH V9.9-2C** on OpenVMS x86-64, where internet SSH probes
-make these files grow quickly.
-
 ## toolchain.com
 
 ```
