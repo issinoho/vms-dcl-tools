@@ -237,6 +237,16 @@ four letters before it searches `DCL$PATH`, so avoid names that start like an ex
 4. Start the cycle with `@SSHLOGS SUBMIT` / `@LOGROTATE SUBMIT`. Running `SUBMIT` again
    should report that the job is already queued.
 
+## Acknowledgements
+
+Some of these tools build on DCL written by others, often decades ago. We appreciate
+the effort and inspiration that went into that work, and are glad to carry it into a
+new era of OpenVMS:
+
+- **A.G.M. van Ruitenbeek** and **J.P. van den Ende** (PinkRoccade Industry, the
+  Netherlands, 2003–2004), whose `MONITOR_DEVICES.COM` is the basis of
+  [`devmon.com`](devmon.com).
+
 ## Licence
 
 [MIT](LICENSE)
