@@ -25,6 +25,7 @@ $ interval = "TOMORROW+03:30"              ! next run; e.g. "+1-" or "+0:30"
 $ job_log  = "SYS$LOGIN:TIDYHOME.LOG"
 $ versions = "2"                           ! versions PURGE keeps of each file
 $ big      = "5000"                        ! report files this many blocks or more
+$ stale    = "365"                         ! report files unchanged this many days
 $ home     = "SYS$LOGIN:"
 $ if p2 .nes. "" then home = p2
 $!
@@ -36,21 +37,33 @@ $!           (write times as TODAY-7-00:00: a trailing "-" continues the line)
 $!   EMPTY   delete files of 0 blocks; quals is how old they must be
 $!   RESET   keep one version and rename it to ;1 once the version number
 $!           passes quals (VMS stops making new versions at 32767)
+$!   RMDIR   delete top-level directories last changed before quals that are
+$!           empty, or hold only files matching a 4th field, e.g. agent.*;
+$!           a directory holding a subdirectory is always kept
 $!   REPORT  list only, never deletes: things to look at yourself
 $ rule_1  = "PURGE|''home'*.*|"
 $ rule_2  = "RESET|''home'SSH$CMDRUN.LOG|1000"     ! one new version per SSH command
 $ rule_3  = "DELETE|''home'*.TMP;*|/BEFORE=TODAY-7-00:00"
-$ rule_4  = "DELETE|''home'sess_*.;*|/BEFORE=TODAY-7-00:00"           ! PHP sessions
+$ rule_4  = "DELETE|''home'sess_*.;*,u_sess_*.;*|/BEFORE=TODAY-7-00:00"  ! PHP sessions
 $ rule_5  = "DELETE|''home'phpt*.;*,php-tests-*.;*|/BEFORE=TODAY-7-00:00"
 $ rule_6  = "DELETE|''home'^.ZendSem.*;*|/BEFORE=TODAY-7-00:00"
-$ rule_7  = "DELETE|''home'*.JOU;*,*.TJL;*|/BEFORE=TODAY-14-00:00"     ! editor journals
-$ rule_8  = "DELETE|''home'*.*_swp;*,*.swp;*|/BEFORE=TODAY-30-00:00"     ! editor swap files
-$ rule_9  = "DELETE|''home'*.LOG;*|/BEFORE=TODAY-30-00:00/EXCLUDE=TIDYHOME.LOG"
-$ rule_10 = "DELETE|''home'*.LIS;*|/BEFORE=TODAY-30-00:00/EXCLUDE=HISTSH_HISTORY.LIS"
-$ rule_11 = "DELETE|''home'*.DMP;*|/BEFORE=TODAY-30-00:00"
-$ rule_12 = "EMPTY|''home'*.;*|TODAY-7-00:00"          ! empty temp files with no type
-$ rule_13 = "REPORT|''home'*.*;*|/SELECT=SIZE=MINIMUM=''big'"
-$ rule_14 = "REPORT|''home'PCSI$SCR*.DIR;*|"       ! leftover PCSI scratch trees
+$ rule_7  = "DELETE|''home'ssl%%%%%%%%%%%%%%%%%%%.;*,cms_*_basic*.*;*|" -
+          + "/BEFORE=TODAY-7-00:00"              ! PHP test temp files
+$ rule_8  = "DELETE|''home'VIM%%aa*.TXT;*|/BEFORE=TODAY-7-00:00"     ! vim temp files
+$ rule_9  = "DELETE|''home'*.JOU;*,*.TJL;*|/BEFORE=TODAY-14-00:00"     ! editor journals
+$ rule_10 = "DELETE|''home'*.*_swp;*,*.swp;*|/BEFORE=TODAY-30-00:00"     ! editor swap files
+$ rule_11 = "DELETE|''home'HISTSH_HISTORY.LIS_*;*|/BEFORE=TODAY-1-00:00" ! histsh rewrites
+$ rule_12 = "DELETE|''home'*.LOG;*|/BEFORE=TODAY-30-00:00/EXCLUDE=TIDYHOME.LOG"
+$ rule_13 = "DELETE|''home'*.LIS;*|/BEFORE=TODAY-30-00:00/EXCLUDE=HISTSH_HISTORY.LIS"
+$ rule_14 = "DELETE|''home'*.DMP;*|/BEFORE=TODAY-30-00:00"
+$ rule_15 = "DELETE|''home'*.OUT;*,*.BAK;*|/BEFORE=TODAY-30-00:00"     ! test output, backups
+$ rule_16 = "EMPTY|''home'*.;*,*.S;*,*.OUT;*|TODAY-7-00:00"   ! empty temp files
+$ rule_17 = "RMDIR|''home'ssh-*.DIR;*|TODAY-30-00:00|agent.*"  ! old ssh-agent sockets
+$ rule_18 = "RMDIR|''home'PCSI$SCR*.DIR;*|TODAY-30-00:00"      ! PCSI scratch dirs
+$ rule_19 = "REPORT|''home'*.*;*|/SELECT=SIZE=MINIMUM=''big'"
+$ rule_20 = "REPORT|''home'*.*;*|/MODIFIED/BEFORE=TODAY-''stale'-00:00/EXCLUDE=*.DIR"
+$ rule_21 = "REPORT|''home'*id_rsa*.*;*,*id_dsa*.*;*,*id_ecdsa*.*;*,*id_ed25519*.*;*|" -
+          + "/PROTECTION/EXCLUDE=*.PUB"            ! private keys outside [.ssh]
 $!
 $!---- Main --------------------------------------------------------------------
 $! Strip the version so edits to this file are picked up by the next run
@@ -83,8 +96,10 @@ $ rule   = rule_'i'
 $ action = f$element(0, "|", rule)
 $ spec   = f$element(1, "|", rule)
 $ quals  = f$element(2, "|", rule)
+$ extra  = f$element(3, "|", rule)
+$ if extra .eqs. "|" then extra = ""
 $ say ""
-$ say "Rule ''i': ''action' ''spec' ''quals'"
+$ say "Rule ''i': ''action' ''spec' ''quals' ''extra'"
 $ gosub full_specs
 $ if spec .nes. "" then gosub do_'action'
 $ goto next_rule
@@ -200,7 +215,8 @@ $ if s .eqs. "," then return
 $empty_loop:
 $ f = f$search(s, 1)
 $ if f .eqs. "" then goto empty_spec
-$ if f$parse(f,,,"TYPE") .nes. "." then goto empty_loop     ! *.; still lists .DIR
+$ if f$edit(f$parse(f,,,"TYPE"), "UPCASE") .eqs. ".DIR" then -
+    goto empty_loop                        ! *.; lists directories too
 $ eof = -1                                 ! stays -1 if the file can't be read
 $ eof = f$file_attributes(f, "EOF")
 $ if eof .ne. 0 then goto empty_loop
@@ -212,6 +228,50 @@ $ else
 $   delete/log/noconfirm 'f'
 $ endif
 $ goto empty_loop
+$!
+$!---- RMDIR: remove an old directory that is empty or holds only 'extra' -----
+$do_RMDIR:
+$ cutoff = f$cvtime(quals)
+$ e = 0
+$rd_spec:
+$ s = f$element(e, ",", spec)
+$ e = e + 1
+$ if s .eqs. "," then return
+$rd_loop:
+$ f = f$search(s, 1)
+$ if f .eqs. "" then goto rd_spec
+$ if f$edit(f$parse(f,,,"TYPE"), "UPCASE") .nes. ".DIR" then goto rd_loop
+$ if f$cvtime(f$file_attributes(f, "RDT")) .ges. cutoff then goto rd_loop
+$ sub = f$parse("[." + f$parse(f,,,"NAME") + "]", -
+        f$parse(f,,,"DEVICE") + f$parse(f,,,"DIRECTORY")) - ".;"
+$ n_all = 0
+$ n_ok  = 0
+$ n_dir = 0
+$rd_all:
+$ g = f$search(sub + "*.*;*", 4)
+$ if g .eqs. "" then goto rd_all_done
+$ n_all = n_all + 1
+$ if f$edit(f$parse(g,,,"TYPE"), "UPCASE") .eqs. ".DIR" then n_dir = n_dir + 1
+$ goto rd_all
+$rd_all_done:
+$ if n_dir .gt. 0 then goto rd_loop        ! never descend into a tree
+$ if extra .eqs. "" then goto rd_counted
+$rd_match:
+$ g = f$search(sub + extra + ";*", 5)
+$ if g .eqs. "" then goto rd_counted
+$ n_ok = n_ok + 1
+$ goto rd_match
+$rd_counted:
+$ if n_ok .ne. n_all then goto rd_loop     ! holds something else: keep it
+$ if dry
+$ then
+$   say "  ''f' (''n_all' files)"
+$ else
+$   if n_all .gt. 0 then delete/log/noconfirm 'sub''extra';*
+$   set file/protection=(o:rwed) 'f'
+$   delete/log/noconfirm 'f'
+$ endif
+$ goto rd_loop
 $!
 $!---- Dry run of PURGE: list each version past the newest 'versions' ----------
 $list_old_versions:
