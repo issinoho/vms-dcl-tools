@@ -40,6 +40,8 @@ $!           passes quals (VMS stops making new versions at 32767)
 $!   RMDIR   delete top-level directories last changed before quals that are
 $!           empty, or hold only files matching a 4th field, e.g. agent.*;
 $!           a directory holding a subdirectory is always kept
+$!   BIG     list files taking quals blocks or more of disk space (allocated,
+$!           so files mostly empty but preallocated show up too)
 $!   REPORT  list only, never deletes: things to look at yourself
 $ rule_1  = "PURGE|''home'*.*|"
 $ rule_2  = "RESET|''home'SSH$CMDRUN.LOG|1000"     ! one new version per SSH command
@@ -50,19 +52,20 @@ $ rule_6  = "DELETE|''home'^.ZendSem.*;*|/BEFORE=TODAY-7-00:00"
 $ rule_7  = "DELETE|''home'ssl%%%%%%%%%%%%%%%%%%%.;*,cms_*_basic*.*;*|" -
           + "/BEFORE=TODAY-7-00:00"              ! PHP test temp files
 $ rule_8  = "DELETE|''home'VIM%%aa*.TXT;*|/BEFORE=TODAY-7-00:00"     ! vim temp files
-$ rule_9  = "DELETE|''home'*.JOU;*,*.TJL;*|/BEFORE=TODAY-14-00:00"     ! editor journals
-$ rule_10 = "DELETE|''home'*.*_swp;*,*.swp;*|/BEFORE=TODAY-30-00:00"     ! editor swap files
-$ rule_11 = "DELETE|''home'HISTSH_HISTORY.LIS_*;*|/BEFORE=TODAY-1-00:00" ! histsh rewrites
-$ rule_12 = "DELETE|''home'*.LOG;*|/BEFORE=TODAY-30-00:00/EXCLUDE=TIDYHOME.LOG"
-$ rule_13 = "DELETE|''home'*.LIS;*|/BEFORE=TODAY-30-00:00/EXCLUDE=HISTSH_HISTORY.LIS"
-$ rule_14 = "DELETE|''home'*.DMP;*|/BEFORE=TODAY-30-00:00"
-$ rule_15 = "DELETE|''home'*.OUT;*,*.BAK;*|/BEFORE=TODAY-30-00:00"     ! test output, backups
-$ rule_16 = "EMPTY|''home'*.;*,*.S;*,*.OUT;*|TODAY-7-00:00"   ! empty temp files
-$ rule_17 = "RMDIR|''home'ssh-*.DIR;*|TODAY-30-00:00|agent.*"  ! old ssh-agent sockets
-$ rule_18 = "RMDIR|''home'PCSI$SCR*.DIR;*|TODAY-30-00:00"      ! PCSI scratch dirs
-$ rule_19 = "REPORT|''home'*.*;*|/SELECT=SIZE=MINIMUM=''big'"
-$ rule_20 = "REPORT|''home'*.*;*|/MODIFIED/BEFORE=TODAY-''stale'-00:00/EXCLUDE=*.DIR"
-$ rule_21 = "REPORT|''home'*id_rsa*.*;*,*id_dsa*.*;*,*id_ecdsa*.*;*,*id_ed25519*.*;*|" -
+$ rule_9  = "DELETE|''home'hs_err_pid*.LOG;*|/BEFORE=TODAY-7-00:00"   ! Java crash logs
+$ rule_10 = "DELETE|''home'*.JOU;*,*.TJL;*|/BEFORE=TODAY-14-00:00"     ! editor journals
+$ rule_11 = "DELETE|''home'*.*_swp;*,*.swp;*|/BEFORE=TODAY-30-00:00"     ! editor swap files
+$ rule_12 = "DELETE|''home'HISTSH_HISTORY.LIS_*;*|/BEFORE=TODAY-1-00:00" ! histsh rewrites
+$ rule_13 = "DELETE|''home'*.LOG;*|/BEFORE=TODAY-30-00:00/EXCLUDE=TIDYHOME.LOG"
+$ rule_14 = "DELETE|''home'*.LIS;*|/BEFORE=TODAY-30-00:00/EXCLUDE=HISTSH_HISTORY.LIS"
+$ rule_15 = "DELETE|''home'*.DMP;*|/BEFORE=TODAY-30-00:00"
+$ rule_16 = "DELETE|''home'*.OUT;*,*.BAK;*,*.TRACE;*|/BEFORE=TODAY-30-00:00" ! output, traces
+$ rule_17 = "EMPTY|''home'*.;*,*.S;*,*.OUT;*,errorlog.*;*|TODAY-7-00:00"  ! empty leftovers
+$ rule_18 = "RMDIR|''home'ssh-*.DIR;*|TODAY-30-00:00|agent.*"  ! old ssh-agent sockets
+$ rule_19 = "RMDIR|''home'PCSI$SCR*.DIR;*|TODAY-30-00:00"      ! PCSI scratch dirs
+$ rule_20 = "BIG|''home'*.*;*|''big'"
+$ rule_21 = "REPORT|''home'*.*;*|/MODIFIED/BEFORE=TODAY-''stale'-00:00/EXCLUDE=*.DIR"
+$ rule_22 = "REPORT|''home'*id_rsa*.*;*,*id_dsa*.*;*,*id_ecdsa*.*;*,*id_ed25519*.*;*|" -
           + "/PROTECTION/EXCLUDE=*.PUB"            ! private keys outside [.ssh]
 $!
 $!---- Main --------------------------------------------------------------------
@@ -228,6 +231,25 @@ $ else
 $   delete/log/noconfirm 'f'
 $ endif
 $ goto empty_loop
+$!
+$!---- BIG: list files whose allocation is at least quals blocks ----------------
+$do_BIG:
+$ min = f$integer(quals)
+$ e = 0
+$bg_spec:
+$ s = f$element(e, ",", spec)
+$ e = e + 1
+$ if s .eqs. "," then return
+$bg_loop:
+$ f = f$search(s, 1)
+$ if f .eqs. "" then goto bg_spec
+$ if f$edit(f$parse(f,,,"TYPE"), "UPCASE") .eqs. ".DIR" then goto bg_loop
+$ alq = 0
+$ alq = f$file_attributes(f, "ALQ")
+$ if alq .lt. min then goto bg_loop
+$ eof = f$file_attributes(f, "EOF")
+$ say f$fao("  !8UL allocated !8UL used  !AS", alq, eof, f)
+$ goto bg_loop
 $!
 $!---- RMDIR: remove an old directory that is empty or holds only 'extra' -----
 $do_RMDIR:
