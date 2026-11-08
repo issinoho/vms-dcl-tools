@@ -193,7 +193,7 @@ $ if qm_q .eqs. "" then goto queue_done
 $ gosub queue_info
 $ qm_jobs = qm_exe + qm_pen + qm_hold + qm_ret + qm_tim
 $ if .not. qm_all .and. .not. qm_named .and. qm_jobs .eq. 0 .and. -
-     qm_sc .nes. qm_red .and. qm_sc .nes. qm_yel
+     qm_sev .eqs. "G"
 $ then
 $   qm_nh = qm_nh + 1
 $   goto queue_next
@@ -202,7 +202,7 @@ $ qm_nq = qm_nq + 1
 $ qm_nexe  = qm_nexe + qm_exe
 $ qm_npen  = qm_npen + qm_pen
 $ qm_nhold = qm_nhold + qm_hold + qm_ret + qm_tim
-$ if qm_sc .eqs. qm_red .or. qm_sc .eqs. qm_yel then qm_nbad = qm_nbad + 1
+$ if qm_sev .nes. "G" then qm_nbad = qm_nbad + 1
 $!
 $! Queue heading: name, type and state; then its details.
 $ qm_l = qm_c_ml
@@ -271,8 +271,8 @@ $ qm_txt = f$fao("!UL queue!%S", qm_nq)
 $ if qm_nh .gt. 0 then qm_txt = qm_txt + f$fao(" (!UL idle hidden)", qm_nh)
 $ qm_txt = qm_txt + f$fao(", !UL executing, !UL pending, !UL held", -
                           qm_nexe, qm_npen, qm_nhold)
-$ if qm_nbad .gt. 0 then qm_txt = qm_txt + f$fao(", !UL need!%S attention", -
-                                               qm_nbad)
+$ if qm_nbad .eq. 1 then qm_txt = qm_txt + ", 1 needs attention"
+$ if qm_nbad .gt. 1 then qm_txt = qm_txt + f$fao(", !UL need attention", qm_nbad)
 $ qm_txt = f$extract(0, qm_cw, qm_txt)
 $ qm_vl  = f$length(qm_txt)
 $ gosub box_line
@@ -355,7 +355,10 @@ $ if f$getqui("DISPLAY_QUEUE", "QUEUE_GENERIC",  qm_spec, qm_f) then -
     qm_type = "Generic " + f$edit(qm_type, "LOWERCASE")
 $!
 $! State, most serious first. Red: not running; yellow: needs a look.
+$! qm_sev (G/Y/R) is the state; qm_sc only colours it, and is empty in
+$! PLAIN mode, so never compare colours to find the state.
 $ qm_sc = qm_grn
+$ qm_sev = "G"
 $ qm_state = "running"
 $ qm_i = 0
 $st_next:
@@ -369,15 +372,19 @@ $ if qm_e .eqs. "/" then goto st_done
 $ if .not. f$getqui("DISPLAY_QUEUE", "QUEUE_" + f$element(0, "|", qm_e), -
                     qm_spec, qm_f) then goto st_next
 $ qm_state = f$element(1, "|", qm_e)
+$ qm_sev = f$element(2, "|", qm_e)
 $ qm_sc = qm_grn
-$ if f$element(2, "|", qm_e) .eqs. "Y" then qm_sc = qm_yel
-$ if f$element(2, "|", qm_e) .eqs. "R" then qm_sc = qm_red
+$ if qm_sev .eqs. "Y" then qm_sc = qm_yel
+$ if qm_sev .eqs. "R" then qm_sc = qm_red
 $st_done:
 $ if f$getqui("DISPLAY_QUEUE", "QUEUE_CLOSED", qm_spec, qm_f) then -
     qm_state = qm_state + ", closed"
 $! Generic queues are never "started" in the same way; idle is normal.
-$ if f$locate("Generic", qm_type) .eq. 0 .and. qm_sc .eqs. qm_red then -
-    qm_sc = qm_yel
+$ if f$locate("Generic", qm_type) .eq. 0 .and. qm_sev .eqs. "R"
+$ then
+$   qm_sev = "Y"
+$   qm_sc = qm_yel
+$ endif
 $!
 $ qm_exe  = f$getqui("DISPLAY_QUEUE", "EXECUTING_JOB_COUNT", qm_spec, qm_f)
 $ qm_pen  = f$getqui("DISPLAY_QUEUE", "PENDING_JOB_COUNT", qm_spec, qm_f)

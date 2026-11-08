@@ -689,7 +689,8 @@ $ endif
 $ ps_l = ps_c_ml
 $ ps_r = ps_c_mr
 $ gosub box_rule
-$ ps_txt = f$fao("!UL process!%S", ps_n)
+$ ps_txt = f$fao("!UL processes", ps_n)
+$ if ps_n .eq. 1 then ps_txt = "1 process"
 $ if ps_n .eq. 1 then ps_txt = "1 process"
 $ if ps_first .and. ps_n .gt. 0 then ps_txt = ps_txt + " (stopped at the first)"
 $ if ps_watch .gt. 0 .and. ps_live

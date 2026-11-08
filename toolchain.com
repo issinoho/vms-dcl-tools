@@ -70,7 +70,7 @@ $ tc_23 = "PHP|SYM:PHP|php ""--version""|PHP|"
 $ tc_24 = "Lua|SYM:LUA|lua ""-v""|Lua|"
 $!
 $ tc_25 = "=Build and source tools"
-$ tc_26 = "Git|SYM:GIT|git ""--version""|git version|"
+$ tc_26 = "Git|SYM:GIT|git version|ersion|"           ! VSI VGIT (Alpha) has no --version
 $ tc_27 = "GNU make|SYM:MAKE|make ""--version""|Make|"
 $ tc_28 = "GNU grep|SYM:GREP|grep ""--version""|grep|"
 $ tc_29 = "GNU sed|SYM:SED|sed ""--version""|sed|"
