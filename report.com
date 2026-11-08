@@ -205,7 +205,8 @@ $   if rp_dd .gt. 0 .or. rp_hh .gt. 0 then -
       rp_up = rp_up + f$fao("!UL hour!%S, ", rp_hh)
 $   rp_up = rp_up + f$fao("!UL min!%S", rp_mm)
 $   rp_k = "Booted"
-$   rp_v = f$extract(0, 17, f$cvtime(rp_boot, "ABSOLUTE")) + -
+$   rp_a = f$cvtime(rp_boot, "ABSOLUTE")     ! no leading space before a 1-digit day
+$   rp_v = f$element(0, " ", rp_a) + " " + f$extract(0, 5, f$element(1, " ", rp_a)) + -
            " (up " + rp_up + ")"
 $   gosub kv
 $ endif

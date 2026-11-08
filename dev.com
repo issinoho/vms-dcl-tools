@@ -264,6 +264,23 @@ $     dv_item = "MEDIA_NAME"
 $     gosub get_dvi
 $     dv_type = f$edit(dv_val, "TRIM")
 $   endif
+$!  Older systems (VAX V7.3) answer "unknown" for many devices: name the
+$!  common ones by their device-name prefix instead.
+$   if dv_type .eqs. "" .or. f$edit(dv_type, "UPCASE") .eqs. "UNKNOWN"
+$   then
+$     dv_short = dv_name - "_"                  ! [_][NODE$]XQA0:
+$     if f$locate("$", dv_short) .lt. f$length(dv_short) then -
+          dv_short = f$element(1, "$", dv_short)
+$     dv_pfx = f$extract(0, 2, dv_short)
+$     dv_known = "|XQ=Ethernet (Q-bus)|XE=Ethernet (Unibus)|ES=Ethernet|" + -
+          "EW=Ethernet|EI=Ethernet|TN=Telnet terminal|RT=DECnet terminal|" + -
+          "FT=pseudo terminal|PU=MSCP port (UDA50)|PK=SCSI port|PA=CI port|" + -
+          "PE=PEDRIVER (cluster)|WS=DECwindows pseudo|OP=operator console|" + -
+          "PP=PPP (dial-up IP)|"
+$     dv_at = f$locate("|" + dv_pfx + "=", dv_known)
+$     if dv_pfx .nes. "" .and. dv_at .lt. f$length(dv_known) then -
+          dv_type = f$element(0, "|", f$extract(dv_at + 4, 40, dv_known))
+$   endif
 $   gosub owner
 $   dv_row = f$fao("!18AS ", dv_name) + dv_st + " " + -
              f$fao("!18AS ", dv_type) + dv_er + f$fao(" !8UL ", dv_ops) + -

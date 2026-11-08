@@ -2020,6 +2020,13 @@ $ if bm_found .eqs. "" .and. (bm_topt .or. bm_guard) then -
     bm_a_st = "optional, not installed"
 $! Inside a product's startup a missing file is usually an unused option.
 $ if bm_found .eqs. "" .and. bm_md .eqs. "PROD" then bm_a_st = "not present"
+$! Behind an architecture test (IF ARCH_NAME .EQS. "Alpha", IF ALPHA_NODE):
+$! a procedure that only exists on another architecture, not a missing one.
+$ bm_cu = f$edit(bm_cond, "UPCASE")
+$ if bm_found .eqs. "" .and. bm_cu .nes. "" .and. -
+     (f$locate("ARCH_NAME", bm_cu) .lt. f$length(bm_cu) .or. -
+      f$locate("_NODE", bm_cu) .lt. f$length(bm_cu)) then -
+    bm_a_st = "for another architecture"
 $! Already read once (a procedure called twice)?
 $ if bm_found .nes. ""
 $ then

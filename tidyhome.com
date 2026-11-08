@@ -15,8 +15,11 @@ $ set symbol/scope=noglobal               ! a DELETE == "DELETE/CONFIRM" can't i
 $ say  = "write sys$output"
 $ mode = f$edit(p1, "TRIM,UPCASE")
 $ dry  = (mode .eqs. "DRYRUN")
-$ old_parse = f$getjpi("", "PARSE_STYLE_PERM")
-$ set process/parse_style=extended        ! for names such as ^.ZendSem.*
+$! Extended parsing for names such as ^.ZendSem.*; VAX has no parse styles
+$! (ODS-2 only), so it is left alone there.
+$ old_parse = ""
+$ if f$getsyi("ARCH_NAME") .nes. "VAX" then old_parse = f$getjpi("", "PARSE_STYLE_PERM")
+$ if old_parse .nes. "" then set process/parse_style=extended
 $!
 $!---- Settings ----------------------------------------------------------------
 $ job_name = "TIDYHOME"
@@ -120,7 +123,7 @@ $   purge 'job_log'
 $   rename 'job_log' 'job_log';1
 $ endif
 $finish:
-$ set process/parse_style='old_parse'
+$ if old_parse .nes. "" then set process/parse_style='old_parse'
 $ exit
 $!
 $!---- Actions -----------------------------------------------------------------

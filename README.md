@@ -1,10 +1,14 @@
 # DCL tools for OpenVMS
 
-![OpenVMS](https://img.shields.io/badge/OpenVMS-x86--64-blue)
+![OpenVMS](https://img.shields.io/badge/OpenVMS-x86--64%20%7C%20IA64%20%7C%20Alpha%20%7C%20VAX-blue)
 [![License](https://img.shields.io/github/license/issinoho/vms-dcl-tools)](LICENSE)
 
 A collection of DCL command procedures for running and inspecting OpenVMS systems. Each one is a
 single file with its settings at the top, so you can copy it to your system and adjust it.
+
+They run on OpenVMS x86-64 (E9.2), IA64 (V8.4-2L3), Alpha (V8.4-2L2) and VAX (V7.3). On VAX,
+which is ODS-2 only and has no SSH, TIDYHOME leaves the parse style alone and SSHLOGS finds
+nothing to clean.
 
 ## Procedures
 

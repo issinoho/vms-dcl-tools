@@ -208,6 +208,7 @@ $ tc_v = tc_vms
 $ gosub box_kv
 $ tc_k = "CPUs"
 $ tc_v = f$fao("!UL active, !UL.!UL GB memory", tc_cpus, tc_gbw, tc_gbf)
+$ if tc_mb .lt. 1024 then tc_v = f$fao("!UL active, !UL MB memory", tc_cpus, tc_mb)
 $ gosub box_kv
 $!
 $!---- Report each tool --------------------------------------------------------
@@ -276,8 +277,9 @@ $! 1. The line containing the match text: output first, then the error
 $!    stream (Java writes its version there). VMS messages are skipped.
 $ tc_wantmsg = 0
 $ gosub find_both
-$! 2. Otherwise the first line of output at all.
-$ if tc_line .eqs. ""
+$! 2. Otherwise the first line of output at all, if the command succeeded
+$!    (a failing one may print only a traceback, e.g. CC without a licence).
+$ if tc_line .eqs. "" .and. tc_status
 $ then
 $   tc_match = ""
 $   gosub find_both

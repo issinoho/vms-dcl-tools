@@ -169,7 +169,8 @@ $   si_v = si_v + f$fao("!UL min!%S", si_mm)
 $   si_k = "Uptime"
 $   gosub add_line
 $   si_k = "Booted"
-$   si_v = f$extract(0, 17, f$cvtime(si_boot, "ABSOLUTE"))
+$   si_a = f$cvtime(si_boot, "ABSOLUTE")     ! "8-NOV-2026 14:35:12.00": no leading space
+$   si_v = f$element(0, " ", si_a) + " " + f$extract(0, 5, f$element(1, " ", si_a))
 $   gosub add_line
 $ endif
 $!
@@ -275,8 +276,9 @@ $   si_np = f$edit(f$element(2, "=", si_line), "TRIM")
 $   if f$type(si_nu) .eqs. "INTEGER" .and. f$type(si_np) .eqs. "INTEGER"
 $   then
 $     si_k = "Users"
-$     si_v = f$fao("!UL user!%S, !UL interactive process!%S", -
-                   f$integer(si_nu), f$integer(si_np))
+$     si_v = f$fao("!UL user!%S, !UL interactive ", f$integer(si_nu), f$integer(si_np))
+$     if f$integer(si_np) .eq. 1 then si_v = si_v + "process"
+$     if f$integer(si_np) .ne. 1 then si_v = si_v + "processes"
 $     gosub add_line
 $   endif
 $ endif
